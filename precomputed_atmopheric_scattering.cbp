@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="precomputed_atmospheric_scattering" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="output/Debug/atmosphere_demo" prefix_auto="1" extension_auto="1" />
+				<Option object_output="output/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="output/Release/atmosphere_demo" prefix_auto="1" extension_auto="1" />
+				<Option object_output="output/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-fexpensive-optimizations" />
+					<Add option="-O3" />
+					<Add option="-DNDEBUG" />
+				</Compiler>
+			</Target>
+			<Target title="Test">
+				<Option output="output/Debug/atmosphere_test" prefix_auto="1" extension_auto="1" />
+				<Option object_output="output/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="IntegrationTest">
+				<Option output="output/Release/atmosphere_integration_test" prefix_auto="1" extension_auto="1" />
+				<Option object_output="output/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-fexpensive-optimizations" />
+					<Add option="-O3" />
+					<Add option="-DNDEBUG" />
+				</Compiler>
+			</Target>
+			<Target title="Docgen">
+				<Option output="output/Debug/docgen" prefix_auto="1" extension_auto="1" />
+				<Option object_output="output/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wmain" />
+			<Add option="-pedantic-errors" />
+			<Add option="-pedantic" />
+			<Add option="-Wall" />
+			<Add option="-std=c++11" />
+			<Add directory="external" />
+			<Add directory="external/dimensional_types" />
+			<Add directory="external/progress_bar" />
+		</Compiler>
+		<Linker>
+			<Add option="-pthread" />
+			<Add library="GLEW" />
+			<Add library="glut" />
+			<Add library="GL" />
+		</Linker>
+		<Unit filename="atmosphere/constants.h">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="atmosphere/definitions.glsl">
+			<Option compile="1" />
+			<Option target="Debug" />
+			<Option target="Release" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="atmosphere/demo/demo.cc">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="atmosphere/demo/demo.glsl">
+			<Option compile="1" />
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="atmosphere/demo/demo.h">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="atmosphere/demo/demo_main.cc">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="atmosphere/functions.glsl">
+			<Option compile="1" />
+			<Option target="Debug" />
+			<Option target="Release" />
+			<Option target="Test" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="atmosphere/model.cc">
+			<Option target="Debug" />
+			<Option target="Release" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="atmosphere/model.h">
+			<Option target="Debug" />
+			<Option target="Release" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="atmosphere/reference/definitions.h">
+			<Option target="Test" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="atmosphere/reference/functions.cc">
+			<Option target="Test" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="atmosphere/reference/functions.h">
+			<Option target="Test" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="atmosphere/reference/functions_test.cc">
+			<Option target="Test" />
+		</Unit>
+		<Unit filename="atmosphere/reference/model.cc">
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="atmosphere/reference/model.h">
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="atmosphere/reference/model_test.cc">
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="atmosphere/reference/model_test.glsl">
+			<Option compile="1" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="external/dimensional_types/math/angle.h">
+			<Option target="Test" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="external/dimensional_types/math/binary_function.h">
+			<Option target="Test" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="external/dimensional_types/math/function.h">
+			<Option target="Test" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="external/dimensional_types/math/matrix.h">
+			<Option target="Test" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="external/dimensional_types/math/scalar.h">
+			<Option target="Test" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="external/dimensional_types/math/scalar_function.h">
+			<Option target="Test" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="external/dimensional_types/math/ternary_function.h">
+			<Option target="Test" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="external/dimensional_types/math/vector.h">
+			<Option target="Test" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="external/dimensional_types/test/test_case.h">
+			<Option target="Test" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="external/dimensional_types/test/test_main.cc">
+			<Option target="Test" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="external/minpng/minpng.h">
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="external/progress_bar/util/progress_bar.cc">
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="external/progress_bar/util/progress_bar.h">
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="index" />
+		<Unit filename="tools/docgen_main.cc">
+			<Option target="Docgen" />
+		</Unit>
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

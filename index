@@ -1,0 +1,216 @@
+<h1>Precomputed Atmospheric Scattering:<br/>a New Implementation</h1>
+
+<p class="author">Eric Bruneton, 2017</p>
+
+<center>
+<img src="atmosphere/reference/LuminanceCombineTexturesSpectralAlbedo2.png">
+</center>
+
+<h2>Introduction</h2>
+
+<p>This document presents a new implementation of our
+<a href="https://hal.inria.fr/inria-00288758/en">Precomputed Atmospheric
+Scattering</a> paper. This new implementation is motivated by the fact that the
+<a href=
+"http://evasion.inrialpes.fr/~Eric.Bruneton/PrecomputedAtmosphericScattering2.zip"
+>original implementation</a>:
+<ul>
+  <li>has almost no comments and no documentation, and as a result is <a href=
+    "http://www.gamedev.net/topic/619745-brunetons-atmospheric-scattering-demystified/"
+    >difficult to understand</a> and to reuse,
+  </li>
+  <li>has absolutely no tests, despite the high risk of implementation errors
+    due to the complexity of the atmospheric scattering equations,
+  </li>
+  <li>contains ad-hoc constants in its texture coordinates mapping functions
+    which are adapted to the Earth case, but cannot be reused for other planets,
+  </li>
+  <li>provides only one of the two options presented in the paper to store the
+    single Mie scattering components (i.e. store the 3 components, or store only
+    one and reconstruct the others with an approximation),
+  </li>
+  <li>does not implement the light shaft algorithm presented in the paper,
+  </li>
+  <li>uses an extra-terrestrial solar spectrum independent of the wavelength
+    (with an arbitrary and completely unphysical value "100") and displays the
+    radiance values directly instead of converting them first to luminance
+    values (via the CIE color matching functions).
+  </li>
+</ul>
+To address these concerns, our new implementation:
+<ul>
+  <li>uses more descriptive function and variable names, and adds extensive
+    comments and documentation.
+  </li>
+  <li>uses static type checking to verify the <a href=
+    "https://en.wikipedia.org/wiki/Dimensional_analysis#Dimensional_homogeneity"
+    >dimensional homogeneity</a> of all the expressions, and uses unit tests to
+    check more complex constraints,
+  </li>
+  <li>uses slightly improved texture coordinates mapping functions which, in
+    particular, no longer use ad-hoc constants,
+  </li>
+  <li>provides the two options presented in the paper to store the single Mie
+    scattering components (which are then compared in our tests),
+  </li>
+  <li>partially implement the light shaft algorithm presented in the paper (it
+    implements Eqs. 17 and 18, but not the shadow volume algorithm),
+  </li>
+  <li>uses a configurable extra-terrestrial solar spectrum, and converts the
+    radiance values to RGB luminance values as described in <a
+    href="https://arxiv.org/pdf/1612.04336.pdf">A Qualitative and Quantitative
+    Evaluation of 8 Clear Sky Models</a>. This gives almost the same results as
+    with a full spectral rendering method, at a fraction of the cost (we check
+    this by comparing the GPU results against full spectral CPU renderings).
+  </li>
+</ul>
+
+<p>The sections below explain how this new implementation can be used, present
+its structure and its documentation and give more details about its tests.
+
+<h2>Usage</h2>
+
+<p>Our new implementation can be used in C++ / OpenGL applications as explained
+in <a href="atmosphere/model.h.html">model.h</a>, and as demonstrated in the
+demo in <code>atmosphere/demo</code>. To run this demo, simply type <code>make
+demo</code> in the main directory.
+
+<p>The default settings of this demo use the real solar spectrum, and display
+luminance values computed as described in Section 14.3 of
+<a href="https://arxiv.org/pdf/1612.04336.pdf">A Qualitative and Quantitative
+Evaluation of 8 Clear Sky Models</a>. To simulate the settings of the original
+implementation, set the solar spectrum to "constant", and turn off the
+"use luminance" setting.
+
+<h2>Structure</h2>
+
+<p>The source code is organized as follows:
+
+<code><ul>
+  <li>atmosphere/<ul>
+    <li>demo/<ul><li>...</li></ul></li>
+    <li>reference/<ul><li>...</li></ul></li>
+    <li>constants.h</li>
+    <li>definitions.glsl</li>
+    <li>functions.glsl</li>
+    <li>model.h</li>
+    <li>model.cc</li>
+  </ul></li>
+</ul></code>
+
+<p>The most important files are the 5 files in the <code>atmosphere</code>
+directory. They contain the GLSL shaders that implement our atmosphere model,
+and provide a C++ API to precompute the atmosphere textures and to use them in
+an OpenGL application. This code does not depend on the content of the other
+directories, and is the only piece which is needed in order to use our
+atmosphere model on GPU.
+
+<p>The other directories provide examples and tests:
+<ul>
+  <li>The <code>atmosphere/demo</code> directory shows how the API provided in
+     <code>atmosphere</code> can be used in practice, using a small C++/OpenGL
+     demo application.
+  </li>
+  <li>The <code>atmosphere/reference</code> directory provides a way to execute
+    our GLSL code on CPU. Its main purpose is to provide unit tests for the GLSL
+    shaders, and to statically check the <a href=
+    "https://en.wikipedia.org/wiki/Dimensional_analysis#Dimensional_homogeneity"
+    >dimensional homogeneity</a> of all the expressions. This process is
+    explained in more details in the <a href="#compilation">Tests</a> section.
+    This code is also used to compute reference images on CPU using full
+    spectral rendering, in order to evaluate the accuracy of the approximate
+    "radiance to RGB luminance" conversion performed by the GPU shaders. It
+    depends on external libraries such as <a
+    href="https://github.com/ebruneton/dimensional_types">dimensional_types</a>
+    (to check the dimensional homogeneity) and
+    <a href="https://github.com/jrmuizel/minpng">minpng</a>.
+  </li>
+</ul>
+
+<h2>Documentation</h2>
+
+<p>The documentation consists of a set of web pages, generated from the
+extensive comments in each source code file:
+<code><ul>
+  <li>atmosphere<ul>
+    <li>demo<ul>
+      <li><a href="atmosphere/demo/demo.h.html">demo.h</a></li>
+      <li><a href="atmosphere/demo/demo.cc.html">demo.cc</a></li>
+      <li><a href="atmosphere/demo/demo.glsl.html">demo.glsl</a></li>
+      <li><a href="atmosphere/demo/demo_main.cc.html">demo_main.cc</a></li>
+    </ul></li>
+    <li>reference<ul>
+      <li><a href="atmosphere/reference/definitions.h.html">
+          definitions.h</a></li>
+      <li><a href="atmosphere/reference/functions.h.html">functions.h</a></li>
+      <li><a href="atmosphere/reference/functions.cc.html">functions.cc</a></li>
+      <li><a href="atmosphere/reference/functions_test.cc.html">
+          functions_test.cc</a></li>
+      <li><a href="atmosphere/reference/model.h.html">model.h</a></li>
+      <li><a href="atmosphere/reference/model.cc.html">model.cc</a></li>
+      <li><a href="atmosphere/reference/model_test.cc.html">
+          model_test.cc</a></li>
+      <li><a href="atmosphere/reference/model_test.glsl.html">
+          model_test.glsl</a></li>
+    </ul></li>
+    <li><a href="atmosphere/constants.h.html">constants.h</a></li>
+    <li><a href="atmosphere/definitions.glsl.html">definitions.glsl</a></li>
+    <li><a href="atmosphere/functions.glsl.html">functions.glsl</a></li>
+    <li><a href="atmosphere/model.h.html">model.h</a></li>
+    <li><a href="atmosphere/model.cc.html">model.cc</a></li>
+  </ul></li>
+</ul></code>
+
+<h2 id="compilation">Tests</h2>
+
+<p>To reduce the risk of implementation errors, two kinds of verifications are
+performed:
+<ul>
+  <li>the <a href=
+    "https://en.wikipedia.org/wiki/Dimensional_analysis#Dimensional_homogeneity"
+    >dimensional homogeneity</a> is checked at compile time, via static type
+    checking,
+  </li>
+  <li>the behavior of each function is checked at runtime, via unit tests.
+  </li>
+</ul>
+
+<p>The main issue to implement this is that a GLSL compiler cannot check the
+dimensional homogeneity, unlike a C++ compiler (see for instance <a href=
+"http://www.boost.org/doc/libs/1_61_0/doc/html/boost_units.html">
+Boost.Units</a>). Our solution to this problem is to write our GLSL code in such
+a way that it can be compiled both by a GLSL compiler and by a C++ compiler.
+For this:
+<ul>
+  <li>we use macros to hide the few syntactic differences between GLSL and C++.
+    For instance, we define <code>OUT(x)</code> as <code>out x</code> in GLSL,
+    and as <code>x&amp;</code> in C++, and declare output variables as
+    <code>OUT(<i>SomeType</i>) <i>someName</i></code> in our shaders.
+  </li>
+  <li>we define the physical types, such as length or power, in a separate file,
+    which we provide in two versions:
+    <ul>
+      <li>the <a href="atmosphere/definitions.glsl.html">GLSL version</a>
+        defines the physical types as aliases of predefined types, such as
+        <code>float</code>,
+      </li>
+      <li>the <a href="atmosphere/reference/definitions.h.html">C++ version</a>
+        defines the physical types based on  <a href=
+        "https://github.com/ebruneton/dimensional_types">dimensional_types</a>
+        abstractions, which are designed to produce compile errors when
+        attempting to add, subtract or compare expressions with different
+        physical dimensions.
+      </li>
+    </ul>
+  </li>
+  <li>we use the predefined GLSL variables such as <code>gl_FragCoord</code>
+    only in the <code>main</code> functions, which we reduce to the minimum
+    (e.g. <code>main() { gl_FragColor = Main(gl_FragCoord); }</code>) and
+    exclude from the C++ compilation.
+  </li>
+</ul>
+
+<p>Thanks to this double GLSL and C++ compilation, the unit tests for the GLSL
+code can then be implemented either in GLSL or in C++. We chose C++ because it
+is much more practical. Indeed, a C++ unit test does not need to send data to
+the GPU and to read back the test result, unlike a GLSL unit test.

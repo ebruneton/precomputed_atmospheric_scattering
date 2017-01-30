@@ -1,0 +1,9 @@
+[submodule "external/dimensional_types"]
+	path = external/dimensional_types
+	url = https://github.com/ebruneton/dimensional_types
+[submodule "external/progress_bar"]
+	path = external/progress_bar
+	url = https://github.com/ebruneton/progress_bar
+[submodule "external/minpng"]
+	path = external/minpng
+	url = https://github.com/jrmuizel/minpng
