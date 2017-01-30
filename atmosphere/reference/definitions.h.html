@@ -1,0 +1,346 @@
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({
+          tex2jax: {
+            inlineMath: [['$','$'], ['\\(','\\)']]
+          },
+          TeX: {
+            equationNumbers: { autoNumber: 'AMS' },
+            Macros: {
+              bi: "{\\mathbf i}",
+              bo: "{\\mathbf o}",
+              bp: "{\\mathbf p}",
+              bq: "{\\mathbf q}",
+              br: "{\\mathbf r}",
+              bs: "{\\mathbf s}",
+              bv: "{\\mathbf v}",
+              bw: "{\\boldsymbol \\omega}",
+              diff: "{\\mathrm d}",
+            }
+          }
+        });
+      </script>
+      <script type="text/javascript"
+          src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+      </script>
+      <script type="text/javascript"
+          src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js">
+      </script>
+      <link rel='stylesheet'
+          type='text/css'
+          href='http://framework.web.cern.ch/framework/2.0/fonts/PTSansWeb/PTSansWeb.css'/>
+      <style>
+        body {
+          max-width: 75ch;
+          margin: 4ch auto 4ch auto;
+          font-family: 'PT Sans', sans-serif;
+        }
+
+        h1 {
+          text-align: center;
+          padding: 2ch 0 2ch 0;
+        }
+
+        h5 {
+          font-weight: normal;
+          font-style: italic;
+        }
+
+        code {
+          font-size: 0.875rem;
+        }
+
+        svg {
+          display: block;
+          margin-top: 1em;
+          margin-left: auto;
+          margin-right: auto;
+          padding: 1ch;
+        }
+
+        .author {
+          text-align: center;
+          padding: 0 0 2ch 0;
+        }
+
+        /* Pretty printing styles. Used with prettify.js. */
+
+        pre.prettyprint {
+          width: 80ch;
+          margin-left: 4ch;
+          background-color: #FAFAFF;
+          border-width: 1px;
+          border-style: solid;
+          border-color: #CCD;
+          padding: 1ch;
+          font-size: 0.875rem;
+        }
+
+        /* Plain text, declaration, variable name, function name. */
+        .pln, .dec, .var {
+          color: #000
+        }
+
+        /* String content, keyword, type name. */
+        .str, .kwd, .typ  {
+          color: #004
+        }
+
+        .kwd {
+          font-weight: bold;
+        }
+
+        /* A comment. */
+        .com {
+          color: #040
+        }
+
+        /* A literal value. */
+        .lit {
+          color: #066
+        }
+      </style>
+    </meta>
+  </head>
+<body>
+<!--
+ * Copyright (c) 2017 Eric Bruneton
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the copyright holders nor the names of its
+ *    contributors may be used to endorse or promote products derived from
+ *    this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+-->
+</pre><h2>atmosphere/reference/definitions.h</h2>
+
+<p>This C++ file defines the physical types and constants which are used in the
+main GLSL <a href="../functions.glsl.html">functions</a> of our atmosphere
+model, in such a way that they can be compiled by the C++ compiler. The <a href=
+"../definitions.glsl.html">GLSL equivalent</a> of this file provides the same
+types and constants in GLSL, to allow the same functions to be compiled by the
+GLSL compiler.
+
+<p>The main purpose of this C++ compilation is to check the <a href="
+https://en.wikipedia.org/wiki/Dimensional_analysis#Dimensional_homogeneity"
+>dimensional homogeneity</a> of the GLSL expressions (see the
+<a href="../index.html">Introduction</a>). For this we define the C++ physical
+types by using generic templates parameterized by physical dimensions,
+inspired from <a href=
+"http://www.boost.org/doc/libs/1_61_0/doc/html/boost_units.html">Boost.Unit</a>,
+and provided by the following included files:
+<pre class="prettyprint">
+#ifndef ATMOSPHERE_REFERENCE_DEFINITIONS_H_
+#define ATMOSPHERE_REFERENCE_DEFINITIONS_H_
+
+#include "atmosphere/constants.h"
+#include "math/angle.h"
+#include "math/binary_function.h"
+#include "math/scalar.h"
+#include "math/scalar_function.h"
+#include "math/ternary_function.h"
+#include "math/vector.h"
+
+namespace atmosphere {
+namespace reference {
+</pre>
+<h3>Physical quantities</h3>
+
+<p>The physical quantities we need for our atmosphere model are
+<a href="https://en.wikipedia.org/wiki/Radiometry">radiometric</a> and
+<a href="https://en.wikipedia.org/wiki/Photometry_(optics)">photometric</a>
+quantities. We start with six base quantities: angle, length, wavelength, solid
+angle, power and luminous power (wavelength is also a length, but we distinguish
+the two for increased clarity).
+<pre class="prettyprint">
+typedef dimensional::Angle Angle;
+typedef dimensional::Scalar&lt;1, 0, 0, 0, 0&gt; Length;
+typedef dimensional::Scalar&lt;0, 1, 0, 0, 0&gt; Wavelength;
+typedef dimensional::Scalar&lt;0, 0, 1, 0, 0&gt; SolidAngle;
+typedef dimensional::Scalar&lt;0, 0, 0, 1, 0&gt; Power;
+typedef dimensional::Scalar&lt;0, 0, 0, 0, 1&gt; LuminousPower;
+</pre>
+<p>From this we derive the irradiance, radiance, spectral irradiance,
+spectral radiance, luminance, etc, as well pure numbers, area, volume, etc.
+<pre class="prettyprint">
+typedef dimensional::Scalar&lt;0, 0, 0, 0, 0&gt; Number;
+typedef dimensional::Scalar&lt;2, 0, 0, 0, 0&gt; Area;
+typedef dimensional::Scalar&lt;3, 0, 0, 0, 0&gt; Volume;
+typedef dimensional::Scalar&lt;-2, 0, 0, 1, 0&gt; Irradiance;
+typedef dimensional::Scalar&lt;-2, 0, -1, 1, 0&gt; Radiance;
+typedef dimensional::Scalar&lt;0, -1, 0, 1, 0&gt; SpectralPower;
+typedef dimensional::Scalar&lt;-2, -1, 0, 1, 0&gt; SpectralIrradiance;
+typedef dimensional::Scalar&lt;-2, -1, -1, 1, 0&gt; SpectralRadiance;
+typedef dimensional::Scalar&lt;-3, -1, -1, 1, 0&gt; SpectralRadianceDensity;
+typedef dimensional::Scalar&lt;-1, 0, 0, 0, 0&gt; ScatteringCoefficient;
+typedef dimensional::Scalar&lt;0, 0, -1, 0, 0&gt; InverseSolidAngle;
+typedef dimensional::Scalar&lt;-3, 0, 0, 0, 0&gt; NumberDensity;
+typedef dimensional::Scalar&lt;0, 0, -1, 0, 1&gt; LuminousIntensity;
+typedef dimensional::Scalar&lt;-2, 0, -1, 0, 1&gt; Luminance;
+typedef dimensional::Scalar&lt;-2, 0, 0, 0, 1&gt; Illuminance;
+</pre>
+<p>We also need vectors of physical quantities, mostly to represent functions
+depending on the wavelength. In this case the vector elements correspond to
+values of a function at some predefined wavelengths. Here we use 47 predefined
+wavelengths, uniformly distributed between 360 and 830 nanometers:
+<pre class="prettyprint">
+template&lt;int U1, int U2, int U3, int U4, int U5&gt;
+using WavelengthFunction = dimensional::ScalarFunction&lt;
+    0, 1, 0, 0, 0, U1, U2, U3, U4, U5, 47, 360, 830&gt;;
+
+// A function from Wavelength to Number.
+typedef WavelengthFunction&lt;0, 0, 0, 0, 0&gt; DimensionlessSpectrum;
+// A function from Wavelength to SpectralPower.
+typedef WavelengthFunction&lt;0, -1, 0, 1, 0&gt; PowerSpectrum;
+// A function from Wavelength to SpectralIrradiance.
+typedef WavelengthFunction&lt;-2, -1, 0, 1, 0&gt; IrradianceSpectrum;
+// A function from Wavelength to SpectralRadiance.
+typedef WavelengthFunction&lt;-2, -1, -1, 1, 0&gt; RadianceSpectrum;
+// A function from Wavelength to SpectralRadianceDensity.
+typedef WavelengthFunction&lt;-3, -1, -1, 1, 0&gt; RadianceDensitySpectrum;
+// A function from Wavelength to ScaterringCoefficient.
+typedef WavelengthFunction&lt;-1, 0, 0, 0, 0&gt; ScatteringSpectrum;
+
+// A position in 3D (3 length values).
+typedef dimensional::Vector3&lt;Length&gt; Position;
+// A unit direction vector in 3D (3 unitless values).
+typedef dimensional::Vector3&lt;Number&gt; Direction;
+// A vector of 3 luminance values.
+typedef dimensional::Vector3&lt;Luminance&gt; Luminance3;
+// A vector of 3 illuminance values.
+typedef dimensional::Vector3&lt;Illuminance&gt; Illuminance3;
+</pre>
+<p>Finally, we also need precomputed textures containing physical quantities in
+each texel (the texture sizes are defined in
+<a href="../constants.h.html"><code>constants.h</code></a>):
+<pre class="prettyprint">
+typedef dimensional::BinaryFunction&lt;
+    TRANSMITTANCE_TEXTURE_WIDTH,
+    TRANSMITTANCE_TEXTURE_HEIGHT,
+    DimensionlessSpectrum&gt; TransmittanceTexture;
+
+template&lt;class T&gt;
+using AbstractScatteringTexture = dimensional::TernaryFunction&lt;
+    SCATTERING_TEXTURE_WIDTH,
+    SCATTERING_TEXTURE_HEIGHT,
+    SCATTERING_TEXTURE_DEPTH,
+    T&gt;;
+
+typedef AbstractScatteringTexture&lt;IrradianceSpectrum&gt;
+    ReducedScatteringTexture;
+
+typedef AbstractScatteringTexture&lt;RadianceSpectrum&gt;
+    ScatteringTexture;
+
+typedef AbstractScatteringTexture&lt;RadianceDensitySpectrum&gt;
+    ScatteringDensityTexture;
+
+typedef dimensional::BinaryFunction&lt;
+    IRRADIANCE_TEXTURE_WIDTH,
+    IRRADIANCE_TEXTURE_HEIGHT,
+    IrradianceSpectrum&gt; IrradianceTexture;
+</pre>
+<h3>Physical units</h3>
+
+<p>We can then define the units for our base physical quantities:
+radians (rad), meter (m), nanometer (nm), steradian (sr), watt (watt) and lumen
+(lm):
+<pre class="prettyprint">
+constexpr Angle rad = dimensional::rad;
+constexpr Length m = Length::Unit();
+constexpr Wavelength nm = Wavelength::Unit();
+constexpr SolidAngle sr = SolidAngle::Unit();
+constexpr Power watt = Power::Unit();
+constexpr LuminousPower lm = LuminousPower::Unit();
+</pre>
+<p>From which we can derive the units for some derived physical quantities,
+as well as some derived units (degress deg, kilometer km, kilocandela kcd):
+<pre class="prettyprint">
+constexpr double PI = dimensional::PI;
+constexpr Angle pi = dimensional::pi;
+constexpr Angle deg = dimensional::deg;
+constexpr Length km = 1000.0 * m;
+constexpr Area m2 = m * m;
+constexpr Volume m3 = m * m * m;
+constexpr Irradiance watt_per_square_meter = watt / m2;
+constexpr Radiance watt_per_square_meter_per_sr = watt / (m2 * sr);
+constexpr SpectralIrradiance watt_per_square_meter_per_nm = watt / (m2 * nm);
+constexpr SpectralRadiance watt_per_square_meter_per_sr_per_nm =
+    watt / (m2 * sr * nm);
+constexpr SpectralRadianceDensity watt_per_cubic_meter_per_sr_per_nm =
+    watt / (m3 * sr * nm);
+constexpr LuminousIntensity cd = lm / sr;
+constexpr LuminousIntensity kcd = 1000.0 * cd;
+constexpr Luminance cd_per_square_meter = cd / m2;
+constexpr Luminance kcd_per_square_meter = kcd / m2;
+</pre>
+<h3>Atmosphere parameters</h3>
+
+<p>Using the above types, we can now define the parameters of our atmosphere
+model:
+<pre class="prettyprint">
+struct AtmosphereParameters {
+  // The solar irradiance at the top of the atmosphere.
+  IrradianceSpectrum solar_irradiance;
+  // The sun's angular radius.
+  Angle sun_angular_radius;
+  // The distance between the planet center and the bottom of the atmosphere.
+  Length bottom_radius;
+  // The distance between the planet center and the top of the atmosphere.
+  Length top_radius;
+  // The scale height of air molecules, meaning that their density is
+  // proportional to exp(-h / rayleigh_scale_height), with h the altitude
+  // (with the bottom of the atmosphere at altitude 0).
+  Length rayleigh_scale_height;
+  // The scattering coefficient of air molecules at the bottom of the
+  // atmosphere, as a function of wavelength.
+  ScatteringSpectrum rayleigh_scattering;
+  // The scale height of aerosols, meaning that their density is proportional
+  // to exp(-h / mie_scale_height), with h the altitude.
+  Length mie_scale_height;
+  // The scattering coefficient of aerosols at the bottom of the atmosphere,
+  // as a function of wavelength.
+  ScatteringSpectrum mie_scattering;
+  // The extinction coefficient of aerosols at the bottom of the atmosphere,
+  // as a function of wavelength.
+  ScatteringSpectrum mie_extinction;
+  // The asymetry parameter for the Cornette-Shanks phase function for the
+  // aerosols.
+  Number mie_phase_function_g;
+  // The average albedo of the ground.
+  DimensionlessSpectrum ground_albedo;
+  // The cosine of the maximum Sun zenith angle for which atmospheric scattering
+  // must be precomputed (for maximum precision, use the smallest Sun zenith
+  // angle yielding negligible sky light radiance values. For instance, for the
+  // Earth case, 102 degrees is a good choice - yielding mu_s_min = -0.2).
+  Number mu_s_min;
+};
+
+}  // namespace reference
+}  // namespace atmosphere
+
+#endif  // ATMOSPHERE_REFERENCE_DEFINITIONS_H_
+</pre>
+</body>
+</html>

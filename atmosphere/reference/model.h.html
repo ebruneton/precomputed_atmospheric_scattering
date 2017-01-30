@@ -1,0 +1,196 @@
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({
+          tex2jax: {
+            inlineMath: [['$','$'], ['\\(','\\)']]
+          },
+          TeX: {
+            equationNumbers: { autoNumber: 'AMS' },
+            Macros: {
+              bi: "{\\mathbf i}",
+              bo: "{\\mathbf o}",
+              bp: "{\\mathbf p}",
+              bq: "{\\mathbf q}",
+              br: "{\\mathbf r}",
+              bs: "{\\mathbf s}",
+              bv: "{\\mathbf v}",
+              bw: "{\\boldsymbol \\omega}",
+              diff: "{\\mathrm d}",
+            }
+          }
+        });
+      </script>
+      <script type="text/javascript"
+          src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+      </script>
+      <script type="text/javascript"
+          src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js">
+      </script>
+      <link rel='stylesheet'
+          type='text/css'
+          href='http://framework.web.cern.ch/framework/2.0/fonts/PTSansWeb/PTSansWeb.css'/>
+      <style>
+        body {
+          max-width: 75ch;
+          margin: 4ch auto 4ch auto;
+          font-family: 'PT Sans', sans-serif;
+        }
+
+        h1 {
+          text-align: center;
+          padding: 2ch 0 2ch 0;
+        }
+
+        h5 {
+          font-weight: normal;
+          font-style: italic;
+        }
+
+        code {
+          font-size: 0.875rem;
+        }
+
+        svg {
+          display: block;
+          margin-top: 1em;
+          margin-left: auto;
+          margin-right: auto;
+          padding: 1ch;
+        }
+
+        .author {
+          text-align: center;
+          padding: 0 0 2ch 0;
+        }
+
+        /* Pretty printing styles. Used with prettify.js. */
+
+        pre.prettyprint {
+          width: 80ch;
+          margin-left: 4ch;
+          background-color: #FAFAFF;
+          border-width: 1px;
+          border-style: solid;
+          border-color: #CCD;
+          padding: 1ch;
+          font-size: 0.875rem;
+        }
+
+        /* Plain text, declaration, variable name, function name. */
+        .pln, .dec, .var {
+          color: #000
+        }
+
+        /* String content, keyword, type name. */
+        .str, .kwd, .typ  {
+          color: #004
+        }
+
+        .kwd {
+          font-weight: bold;
+        }
+
+        /* A comment. */
+        .com {
+          color: #040
+        }
+
+        /* A literal value. */
+        .lit {
+          color: #066
+        }
+      </style>
+    </meta>
+  </head>
+<body>
+<!--
+ * Copyright (c) 2017 Eric Bruneton
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the copyright holders nor the names of its
+ *    contributors may be used to endorse or promote products derived from
+ *    this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+-->
+</pre><h2>atmosphere/reference/model.h</h2>
+
+<p>This file defines the API to use our atmosphere model on CPU.
+To use it:
+<ul>
+<li>create a <code>Model</code> instance with the desired atmosphere
+parameters, and a directory where the precomputed textures can be cached,</li>
+<li>call <code>Init</code> to precompute the atmosphere textures (or read
+them from the cache directory if they have already been precomputed),</li>
+<li>call <code>GetSkyRadiance</code>, <code>GetSkyRadianceToPoint</code> and
+<code>GetSunAndSkyIrradiance</code> as desired,</li>
+<li>delete your <code>Model</code> when you no longer need it (the destructor
+deletes the precomputed textures from memory).</li>
+</ul>
+<pre class="prettyprint">
+#ifndef ATMOSPHERE_REFERENCE_MODEL_H_
+#define ATMOSPHERE_REFERENCE_MODEL_H_
+
+#include &lt;memory&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+#include "atmosphere/reference/definitions.h"
+
+namespace atmosphere {
+namespace reference {
+
+class Model {
+ public:
+  Model(const AtmosphereParameters& atmosphere,
+        const std::string& cache_directory);
+
+  void Init(unsigned int num_scattering_orders = 4);
+
+  RadianceSpectrum GetSkyRadiance(Position camera, Direction view_ray,
+      Length shadow_length, Direction sun_direction,
+      DimensionlessSpectrum* transmittance) const;
+
+  RadianceSpectrum GetSkyRadianceToPoint(Position camera, Position point,
+      Length shadow_length, Direction sun_direction,
+      DimensionlessSpectrum* transmittance) const;
+
+  IrradianceSpectrum GetSunAndSkyIrradiance(Position p, Direction normal,
+      Direction sun_direction, IrradianceSpectrum* sky_irradiance) const;
+
+ private:
+  const AtmosphereParameters atmosphere_;
+  const std::string cache_directory_;
+  std::unique_ptr&lt;TransmittanceTexture&gt; transmittance_texture_;
+  std::unique_ptr&lt;ReducedScatteringTexture&gt; scattering_texture_;
+  std::unique_ptr&lt;ReducedScatteringTexture&gt; single_mie_scattering_texture_;
+  std::unique_ptr&lt;IrradianceTexture&gt; irradiance_texture_;
+};
+
+}  // namespace reference
+}  // namespace atmosphere
+
+#endif  // ATMOSPHERE_REFERENCE_MODEL_H_
+</pre>
+</body>
+</html>
