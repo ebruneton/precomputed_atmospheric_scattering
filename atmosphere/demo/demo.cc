@@ -65,8 +65,9 @@ a string literal via the generated file <code>demo.glsl.inc</code>):
 
 namespace {
 
+constexpr double kPi = 3.1415926;
 constexpr double kSunAngularRadius = 0.00935 / 2.0;
-constexpr double kSunSolidAngle = 2.0 * M_PI * (1.0 - cos(kSunAngularRadius));
+constexpr double kSunSolidAngle = kPi * kSunAngularRadius * kSunAngularRadius;
 constexpr double kLengthUnitInMeters = 1000.0;
 
 const char* kVertexShader = R"(
@@ -180,7 +181,7 @@ void Demo::InitModel() {
   constexpr double kMieSingleScatteringAlbedo = 0.9;
   constexpr double kMiePhaseFunctionG = 0.8;
   constexpr double kGroundAlbedo = 0.1;
-  constexpr double kMaxSunZenithAngle = 102.0 / 180.0 * M_PI;
+  constexpr double kMaxSunZenithAngle = 102.0 / 180.0 * kPi;
 
   std::vector<double> wavelengths;
   std::vector<double> solar_irradiance;
@@ -360,8 +361,8 @@ interact with the atmosphere model:
 void Demo::HandleReshapeEvent(int viewport_width, int viewport_height) {
   glViewport(0, 0, viewport_width, viewport_height);
 
-  constexpr float kFovY = 50.0 / 180.0 * M_PI;
-  constexpr float kTanFovY = tan(kFovY / 2.0);
+  const float kFovY = 50.0 / 180.0 * kPi;
+  const float kTanFovY = tan(kFovY / 2.0);
   float aspect_ratio = static_cast<float>(viewport_width) / viewport_height;
 
   // Transform matrix from clip space to camera space.
@@ -434,12 +435,12 @@ void Demo::HandleMouseDragEvent(int mouse_x, int mouse_y) {
   if (is_ctrl_key_pressed_) {
     sun_zenith_angle_radians_ -= (previous_mouse_y_ - mouse_y) / kScale;
     sun_zenith_angle_radians_ =
-        std::max(0.0, std::min(M_PI, sun_zenith_angle_radians_));
+        std::max(0.0, std::min(kPi, sun_zenith_angle_radians_));
     sun_azimuth_angle_radians_ += (previous_mouse_x_ - mouse_x) / kScale;
   } else {
     view_zenith_angle_radians_ += (previous_mouse_y_ - mouse_y) / kScale;
     view_zenith_angle_radians_ =
-        std::max(0.0, std::min(M_PI / 2.0, view_zenith_angle_radians_));
+        std::max(0.0, std::min(kPi / 2.0, view_zenith_angle_radians_));
     view_azimuth_angle_radians_ += (previous_mouse_x_ - mouse_x) / kScale;
   }
   previous_mouse_x_ = mouse_x;

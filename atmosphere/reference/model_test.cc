@@ -385,7 +385,7 @@ provide the following method:
   void SetViewParameters(Angle sun_theta, Angle sun_phi, bool use_luminance) {
     // Transform matrix from camera frame to world space.
     const float kCameraPos[3] = { 2000.0, -8000.0, 500.0 };
-    constexpr float kPitch = M_PI / 30.0;
+    constexpr float kPitch = PI / 30.0;
     const float model_from_view[16] = {
       1.0, 0.0, 0.0, kCameraPos[0],
       0.0, -sinf(kPitch), -cosf(kPitch), kCameraPos[1],
@@ -394,8 +394,8 @@ provide the following method:
     };
 
     // Transform matrix from clip space to camera space.
-    constexpr float kFovY = 50.0 / 180.0 * M_PI;
-    constexpr float kTanFovY = std::tan(kFovY / 2.0);
+    constexpr float kFovY = 50.0 / 180.0 * PI;
+    const float kTanFovY = std::tan(kFovY / 2.0);
     const float view_from_clip[16] = {
       kTanFovY * static_cast<float>(kWidth) / kHeight, 0.0, 0.0, 0.0,
       0.0, kTanFovY, 0.0, 0.0,

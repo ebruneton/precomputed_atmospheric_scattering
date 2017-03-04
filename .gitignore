@@ -1,1 +1,3 @@
 output/**
+*.glsl.inc
+
