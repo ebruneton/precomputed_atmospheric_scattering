@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--Copyright, Microsoft Corporation, All rights reserved.-->
+<Rule
+      Name="ConfigurationNMake"
+      DisplayName="NMake"
+      PageTemplate="generic"
+      Description="NMake"
+      SwitchPrefix="/"
+      Order="100"
+      xmlns="http://schemas.microsoft.com/build/2009/properties">
+  <Rule.Categories>
+    <Category Name="General" DisplayName="General" Description="General" />
+    <Category Name="IntelliSense" DisplayName="IntelliSense" Description="IntelliSense" />
+  </Rule.Categories>
+  <Rule.DataSource>
+    <DataSource Persistence="ProjectFile" />
+  </Rule.DataSource>
+  <StringProperty Name="NMakeBuildCommandLine" DisplayName="Build Command Line"
+                  Description="Specifies the command line to run for the 'Build' command."
+                  IncludeInCommandLine="false"
+                  Category="General" 
+                  F1Keyword="VC.Project.VCNMakeTool.BuildCommandLine">
+    <StringProperty.ValueEditors>
+      <ValueEditor EditorType="DefaultCommandPropertyEditor" DisplayName="&lt;Edit...&gt;"/>
+    </StringProperty.ValueEditors>
+  </StringProperty>
+  <StringProperty Name="NMakeReBuildCommandLine" DisplayName="Rebuild All Command Line"
+                  Description="Specifies the command line to run for the 'Rebuild All' command."
+                  IncludeInCommandLine="false"
+                  Category="General"
+                  F1Keyword="VC.Project.VCNMakeTool.ReBuildCommandLine">
+    <StringProperty.ValueEditors>
+      <ValueEditor EditorType="DefaultCommandPropertyEditor" DisplayName="&lt;Edit...&gt;"/>
+    </StringProperty.ValueEditors>
+  </StringProperty>
+  <StringProperty Name="NMakeCleanCommandLine" DisplayName="Clean Command Line"
+                  Description="Specifies the command line to run for the 'Clean' command."
+                  IncludeInCommandLine="false"
+                  Category="General" 
+                  F1Keyword="VC.Project.VCNMakeTool.CleanCommandLine">
+    <StringProperty.ValueEditors>
+      <ValueEditor EditorType="DefaultCommandPropertyEditor" DisplayName="&lt;Edit...&gt;"/>
+    </StringProperty.ValueEditors>
+  </StringProperty>
+  <StringProperty Name="NMakeOutput" DisplayName="Output"
+                  Description='Specifies the output file to generate.'
+                  Category="General" 
+                  IncludeInCommandLine="false"
+                  F1Keyword="VC.Project.VCNMakeTool.Output"/>
+                  
+                  
+  <StringListProperty Name="NMakePreprocessorDefinitions" DisplayName="Preprocessor Definitions" Category="IntelliSense" Switch="D"
+                  Description="Specifies the preprocessor defines used by the source files." 
+                  F1Keyword="VC.Project.VCNMakeTool.PreprocessorDefinitions"/>
+  <StringListProperty Name="NMakeIncludeSearchPath" DisplayName="Include Search Path" Category="IntelliSense" Switch="I"
+                  Description="Specifies the include search path for resolving included files." Subtype="folder" 
+                  F1Keyword="VC.Project.VCNMakeTool.IncludeSearchPath"/>
+  <StringListProperty Name="NMakeForcedIncludes" DisplayName="Forced Includes" Category="IntelliSense" Switch="FI"
+                  Description="Specifies the files that are forced included." Subtype="folder"
+                   F1Keyword="VC.Project.VCNMakeTool.ForcedIncludes"/>
+  <StringListProperty Name="NMakeAssemblySearchPath" DisplayName="Assembly Search Path" Category="IntelliSense" Switch="AI"
+                  Description="Specifies the assembly search path for resolving used .NET assemblies." Subtype="folder"
+                  F1Keyword="VC.Project.VCNMakeTool.AssemblySearchPath"/>
+  <StringListProperty Name="AdditionalSOSearchPaths" DisplayName="Additional Symbol Search Paths" Category="IntelliSense"
+                  Description="Locations to identify "
+                  F1Keyword="VC.Project.VCNMakeTool.AdditionalSOSearchPaths" />
+  <StringProperty Name="AdditionalOptions" DisplayName="Additional Options" Category="IntelliSense"
+                  Description="Specifies additional compiler switches to be used by Intellisense when parsing C++ files" />
+</Rule>

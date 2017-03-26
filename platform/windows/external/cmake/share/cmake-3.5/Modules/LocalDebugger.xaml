@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--Copyright, Microsoft Corporation, All rights reserved.-->
+<Rule 
+  Name="LocalDebugger"
+  DisplayName="Local GDB"
+  PageTemplate="debugger"
+  Order="200"
+  Description="Debugger options"
+  xmlns:sys="clr-namespace:System;assembly=mscorlib"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns="http://schemas.microsoft.com/build/2009/properties">
+
+  <!--Rule.Metadata>
+    <sys:Guid x:Key="DebugTargetTypeCommandGuid">FEEA6E9D-77D8-423F-9EDE-3970CBB76125</sys:Guid>
+    <sys:UInt32 x:Key="DebugTargetTypeCommandId">0x400</sys:UInt32>
+    <sys:String x:Key="DebugTargetDropdownEnum">AndroidDeviceID</sys:String>
+  </Rule.Metadata-->
+  <Rule.DataSource>
+    <DataSource Persistence="UserFile" />
+  </Rule.DataSource>
+  <Rule.Categories>
+    <Category Name="StartOptions" DisplayName="Start Options" Description="Start Options"/>
+  </Rule.Categories>
+
+  <StringProperty Name="LocalWorkingDirectory"
+                  DisplayName="Local Working Directory"
+                  Description="Local root location where executable runs"
+                  F1Keyword="VC.Project.LinuxDebugger.PackagePath">
+    <StringProperty.ValueEditors>
+      <ValueEditor EditorType="DefaultStringPropertyEditor" DisplayName="&lt;Edit...&gt;"/>
+      <ValueEditor EditorType="DefaultFolderPropertyEditor" DisplayName="&lt;Browse...&gt;"/>
+    </StringProperty.ValueEditors>
+  </StringProperty>
+  
+  <StringProperty Name="LocalExecutable"
+                  DisplayName="Local Executable"
+                  Description="Name of the local executable program"
+                  F1Keyword="VC.Project.LinuxDebugger.PackagePath">
+  </StringProperty>
+  
+  <StringProperty Name="LocalExecutableArguments"
+                  DisplayName="Local Executable Arguments"
+                  Description="Optional, arguments to pass to the local executable"
+                  F1Keyword="VC.Project.LinuxDebugger.PackagePath">
+  </StringProperty>
+  
+  <StringProperty Name="LocalDebuggerExecutable"
+                  DisplayName="Local Debugger Executable"
+                  Description="Full path to local gdb/lldb executable"
+                  F1Keyword="VC.Project.LinuxDebugger.PackagePath">
+    <StringProperty.ValueEditors>
+      <ValueEditor EditorType="DefaultStringPropertyEditor" DisplayName="&lt;Edit...&gt;"/>
+      <ValueEditor EditorType="DefaultFilePropertyEditor" DisplayName="&lt;Browse...&gt;"/>
+    </StringProperty.ValueEditors>
+  </StringProperty>
+  
+  <StringProperty Name="LocalDebuggerServerAddress"
+                  DisplayName="Local Debugger Server Address"
+                  Description="Optional, local debugger server address if needed"
+                  F1Keyword="VC.Project.LinuxDebugger.PackagePath">
+  </StringProperty>
+    
+</Rule>
