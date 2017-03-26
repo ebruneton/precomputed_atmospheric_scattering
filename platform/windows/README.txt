@@ -1,20 +1,20 @@
+Cmake setup for windows
 
-generateProject and CMakelists.txt requires cmake, freeglut, glew and gnuwin32 in a folder in the current folder.
-\precomputed_atmospheric_scattering\platform\windows\external\
+generate_project and CMakelists.txt requires cmake, freeglut, glew and gnuwin32 in precomputed_atmospheric_scattering\platform\windows\external\
 
 ex:
-external\cmake\bin\cmake.exe
-external\freeglut\lib\x64\freeglut.lib
-external\glew\lib\Release\x64\glew32.lib
+precomputed_atmospheric_scattering\platform\windows\external\cmake\bin\cmake.exe
+precomputed_atmospheric_scattering\platform\windows\external\freeglut\lib\x64\freeglut.lib
+precomputed_atmospheric_scattering\platform\windows\external\glew\lib\Release\x64\glew32.lib
 
-for gnuwin32, only sed.exe is required:
+For gnuwin32, only sed.exe is required:
 
-external\gnuwin32\libiconv2.dll
-external\gnuwin32\libintl3.dll
-external\gnuwin32\regex2.dll
-external\gnuwin32\sed.exe
+precomputed_atmospheric_scattering\platform\windows\external\gnuwin32\libiconv2.dll
+precomputed_atmospheric_scattering\platform\windows\external\gnuwin32\libintl3.dll
+precomputed_atmospheric_scattering\platform\windows\external\gnuwin32\regex2.dll
+precomputed_atmospheric_scattering\platform\windows\external\gnuwin32\sed.exe
 
-tested with:
+Tested with:
 
 cmake 3.5
 freeglut 3.0.0-1.mp
