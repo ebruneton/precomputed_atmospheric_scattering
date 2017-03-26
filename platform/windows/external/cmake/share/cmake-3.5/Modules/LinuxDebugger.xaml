@@ -1,0 +1,82 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--Copyright, Microsoft Corporation, All rights reserved.-->
+<Rule 
+  Name="LinuxDebugger"
+  DisplayName="Remote GDB"
+  PageTemplate="debugger"
+  Order="100"
+  Description="Debugger options"
+  xmlns:sys="clr-namespace:System;assembly=mscorlib"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns="http://schemas.microsoft.com/build/2009/properties">
+
+  <!--Rule.Metadata>
+    <sys:Guid x:Key="DebugTargetTypeCommandGuid">FEEA6E9D-77D8-423F-9EDE-3970CBB76125</sys:Guid>
+    <sys:UInt32 x:Key="DebugTargetTypeCommandId">0x400</sys:UInt32>
+    <sys:String x:Key="DebugTargetDropdownEnum">AndroidDeviceID</sys:String>
+  </Rule.Metadata-->
+  <Rule.DataSource>
+    <DataSource Persistence="UserFile" />
+  </Rule.DataSource>
+  <Rule.Categories>
+    <Category Name="StartOptions" DisplayName="Start Options" Description="Start Options"/>
+  </Rule.Categories>
+
+  <StringProperty Name="RemoteHostName"
+                  DisplayName="Remote Host Name"
+                  Description="Host name or IP address of the remote machine"
+                  F1Keyword="VC.Project.LinuxDebugger.PackagePath">
+  </StringProperty>
+  
+  <StringProperty Name="RemoteUserName"
+                  DisplayName="Remote User Name"
+                  Description="User Name for the remote machine"
+                  F1Keyword="VC.Project.LinuxDebugger.PackagePath">
+  </StringProperty>
+
+  <StringProperty Name="PrivateKey"
+                  DisplayName="Private Key"
+                  Description="Private Key for authentication in the remote machine"
+                  Subtype="file"
+                  F1Keyword="VC.Project.LinuxDebugger.PackagePath">
+    <StringProperty.ValueEditors>
+      <ValueEditor EditorType="DefaultStringPropertyEditor" DisplayName="&lt;Edit...&gt;"/>
+      <ValueEditor EditorType="DefaultFilePropertyEditor" DisplayName="&lt;Browse...&gt;"/>
+    </StringProperty.ValueEditors>
+  </StringProperty>
+  
+  <StringProperty Name="SecureShellExecutable"
+                  DisplayName="Secure Shell Executable"
+                  Description="Command to invoke a Secure Shell session to stream debuger session through, e.g. ssh or plink"
+                  Subtype="file"
+                  F1Keyword="VC.Project.LinuxDebugger.PackagePath">
+    <StringProperty.ValueEditors>
+      <ValueEditor EditorType="DefaultStringPropertyEditor" DisplayName="&lt;Edit...&gt;"/>
+      <ValueEditor EditorType="DefaultFilePropertyEditor" DisplayName="&lt;Browse...&gt;"/>
+    </StringProperty.ValueEditors>
+  </StringProperty>
+  
+  <StringProperty Name="RemoteWorkingDirectory"
+                  DisplayName="Remote Working Directory"
+                  Description="Remote root location where executable runs"
+                  F1Keyword="VC.Project.LinuxDebugger.PackagePath">
+  </StringProperty>
+  
+  <StringProperty Name="RemoteExecutable"
+                  DisplayName="Remote Executable"
+                  Description="Name of the remote executable program"
+                  F1Keyword="VC.Project.LinuxDebugger.PackagePath">
+  </StringProperty>
+  
+  <StringProperty Name="RemoteExecutableArguments"
+                  DisplayName="Remote Executable Arguments"
+                  Description="Optional, arguments to pass to the remote executable"
+                  F1Keyword="VC.Project.LinuxDebugger.PackagePath">
+  </StringProperty>
+    
+  <StringProperty Name="RemoteDebuggerExecutable"
+                  DisplayName="Remote Debugger Executable"
+                  Description="Command to invoke remote debugger executable"
+                  F1Keyword="VC.Project.LinuxDebugger.PackagePath">
+  </StringProperty>
+</Rule>

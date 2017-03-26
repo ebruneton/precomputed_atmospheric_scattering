@@ -1,0 +1,154 @@
+cmake_minimum_required (VERSION 3.5)
+
+macro(make_absolute files)
+	set (_out)
+	foreach(file ${${files}})
+		get_filename_component(file_abs ${file} ABSOLUTE)	
+		LIST(APPEND _out ${file_abs})
+	endforeach()
+	set (${files} ${_out})
+endmacro()
+
+macro(make_definitions definitions)
+	set (_out)
+	foreach(definition ${${definitions}})
+		LIST(APPEND _out -D${definition})
+	endforeach()
+	set (${definitions} ${_out})
+endmacro()
+
+set (GENERATED_FILES_PATH ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/generated/)
+set (GENERATED_FILES_INCLUDES ${GENERATED_FILES_PATH})
+make_absolute(GENERATED_FILES_INCLUDES)
+
+set (ROOT ../../)
+set (SRC ${ROOT}atmosphere/)
+set (PUB ${ROOT}bin/)
+set (PUB_ABS ${PUB})
+make_absolute(PUB_ABS)
+
+set (PLATFORM_WIN_DIR ./)
+set (EXT ${PLATFORM_WIN_DIR}external/)
+
+set (GLEW ${EXT}glew/)
+set (GLEW_INCLUDES ${GLEW}include)
+make_absolute(GLEW_INCLUDES)
+set (GLEW_LIBS ${GLEW}lib/Release/x64/glew32.lib)
+make_absolute(GLEW_LIBS)
+set (GLEW_DLL ${GLEW}bin/Release/x64/glew32.dll)
+make_absolute(GLEW_DLL)
+
+set (FREEGLUT ${EXT}freeglut/)
+set (FREEGLUT_INCLUDES ${FREEGLUT}include)
+make_absolute(FREEGLUT_INCLUDES)
+set (FREEGLUT_LIBS ${FREEGLUT}lib/x64/freeglut.lib)
+make_absolute(FREEGLUT_LIBS)
+set (FREEGLUT_DLL ${FREEGLUT}bin/x64/freeglut.dll)
+make_absolute(FREEGLUT_DLL)
+
+set (GNUWIN32 ${EXT}gnuwin32/)
+set (SED ${GNUWIN32}sed.exe)
+make_absolute(SED)
+
+set (CREATE_GLSL_INC ${PLATFORM_WIN_DIR}create_glsl_inc.bat)
+
+macro(set_output_dir OUTPUTDIR)
+	set (OUTPUTDIR_ABS ${OUTPUTDIR})
+	make_absolute(OUTPUTDIR_ABS)
+	set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUTDIR_ABS})
+	foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
+		string( TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG )
+		set( CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${OUTPUTDIR_ABS} )
+	endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
+endmacro()
+
+macro(add_glsl_inc_cmd glslFilepath glslStartOfRelativePathForOutput GeneratedOutputPath)
+	GET_FILENAME_COMPONENT(inputFullpath ${glslFilepath} ABSOLUTE)
+	GET_FILENAME_COMPONENT(outputDir ${GeneratedOutputPath} ABSOLUTE)
+	
+	string(LENGTH ${glslStartOfRelativePathForOutput} len)
+	string(SUBSTRING ${glslFilepath} ${len} -1 relativePathForOutput)
+	SET (outputFile ${outputDir}/${relativePathForOutput}.inc)
+	
+	GET_FILENAME_COMPONENT(createCmdFullpath ${CREATE_GLSL_INC} ABSOLUTE)
+	FILE(TO_NATIVE_PATH ${outputFile} outputFile)
+
+	add_custom_command(OUTPUT ${outputFile}
+		COMMAND ${createCmdFullpath} ${SED} ${inputFullpath} ${outputFile}
+		MAIN_DEPENDENCY ${glslFilepath}
+		COMMENT "Generating ${glslfile}.inc in ${outputDir}"
+	)
+endmacro(add_glsl_inc_cmd)
+
+project (Atmosphere)
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+set_output_dir(${PUB_ABS})
+
+set(ROOT_INCLUDES ${ROOT})
+make_absolute(ROOT_INCLUDES)
+
+set(PROJ Atmosphere)
+
+set(PROJSRC ${SRC})
+
+set (DEFINITIONS
+	_CRT_SECURE_NO_WARNINGS
+)
+make_definitions(DEFINITIONS)
+
+set (INCLUDES
+	${GENERATED_FILES_INCLUDES}
+	${ROOT_INCLUDES}
+	${GLEW_INCLUDES}
+	${FREEGLUT_INCLUDES}
+)
+
+set (MODEL_PATH ${PROJSRC})
+set (MODEL_FILES
+	${MODEL_PATH}model.cc
+	${MODEL_PATH}model.h
+	${MODEL_PATH}constants.h
+	${MODEL_PATH}definitions.glsl
+	${MODEL_PATH}functions.glsl
+)
+add_glsl_inc_cmd(${PROJSRC}definitions.glsl ${ROOT} ${GENERATED_FILES_PATH})
+add_glsl_inc_cmd(${PROJSRC}functions.glsl ${ROOT} ${GENERATED_FILES_PATH})
+source_group(Model FILES ${MODEL_FILES})
+
+set (DEMO_PATH ${SRC}demo/)
+set (DEMO_FILES
+	${DEMO_PATH}demo.cc
+	${DEMO_PATH}demo.h
+	${DEMO_PATH}demo.glsl
+	${DEMO_PATH}demo_main.cc
+)
+add_glsl_inc_cmd(${DEMO_PATH}demo.glsl ${ROOT} ${GENERATED_FILES_PATH})
+source_group(Demo FILES ${DEMO_FILES})
+
+set (SRC_FILES
+	${MODEL_FILES}
+	${DEMO_FILES}
+)
+
+set (LIBS
+	Shlwapi.lib
+	Shell32.lib
+	${GLEW_LIBS}
+	${FREEGLUT_LIBS}
+)
+
+add_executable (${PROJ} ${SRC_FILES})
+
+set_target_properties(${PROJ} PROPERTIES COMPILE_FLAGS ${DEFINITIONS})
+set_target_properties(${PROJ} PROPERTIES INCLUDE_DIRECTORIES "${INCLUDES}")
+set_target_properties(${PROJ} PROPERTIES DEBUG_POSTFIX "_d" )
+set_target_properties(${PROJ} PROPERTIES RELEASE_POSTFIX "" )
+set_target_properties(${PROJ} PROPERTIES MINSIZEREL_POSTFIX "_s" )
+set_target_properties(${PROJ} PROPERTIES RELWITHDEBINFO_POSTFIX "_r" )
+target_link_libraries(${PROJ} ${LIBS})
+
+add_custom_command(TARGET ${PROJ} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${GLEW_DLL} $<TARGET_FILE_DIR:${PROJ}> 
+		&& ${CMAKE_COMMAND} -E copy_if_different ${FREEGLUT_DLL} $<TARGET_FILE_DIR:${PROJ}>
+)
