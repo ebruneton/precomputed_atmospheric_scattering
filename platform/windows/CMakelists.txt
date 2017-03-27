@@ -46,10 +46,6 @@ make_absolute(FREEGLUT_LIBS)
 set (FREEGLUT_DLL ${FREEGLUT}bin/x64/freeglut.dll)
 make_absolute(FREEGLUT_DLL)
 
-set (GNUWIN32 ${EXT}gnuwin32/)
-set (SED ${GNUWIN32}sed.exe)
-make_absolute(SED)
-
 set (CREATE_GLSL_INC ${PLATFORM_WIN_DIR}create_glsl_inc.bat)
 
 macro(set_output_dir OUTPUTDIR)
@@ -74,7 +70,7 @@ macro(add_glsl_inc_cmd glslFilepath glslStartOfRelativePathForOutput GeneratedOu
 	FILE(TO_NATIVE_PATH ${outputFile} outputFile)
 
 	add_custom_command(OUTPUT ${outputFile}
-		COMMAND ${createCmdFullpath} ${SED} ${inputFullpath} ${outputFile}
+		COMMAND ${createCmdFullpath} ${inputFullpath} ${outputFile}
 		MAIN_DEPENDENCY ${glslFilepath}
 		COMMENT "Generating ${glslfile}.inc in ${outputDir}"
 	)
