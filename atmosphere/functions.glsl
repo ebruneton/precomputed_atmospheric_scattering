@@ -253,14 +253,27 @@ definition and the
 <a href="https://en.wikipedia.org/wiki/Beer-Lambert_law">Beer-Lambert law</a>,
 this involves the integral of the number density of air molecules along the
 segment $[\bp,\bi]$, as well as the integral of the number density of aerosols
-along this segment. Both integrals have the same form and, when the segment
-$[\bp,\bi]$ does not intersect the ground, they can be computed numerically with
-the help of the following auxilliary function (using the <a href=
-"https://en.wikipedia.org/wiki/Trapezoidal_rule">trapezoidal rule</a>):
+and the integral of the number density of air molecules that absorb light
+(e.g. ozone) - along the same segment. These 3 integrals have the same form and,
+when the segment $[\bp,\bi]$ does not intersect the ground, they can be computed
+numerically with the help of the following auxilliary function (using the <a
+href="https://en.wikipedia.org/wiki/Trapezoidal_rule">trapezoidal rule</a>):
 */
 
+Number GetLayerDensity(IN(DensityProfileLayer) layer, Length altitude) {
+  Number density = layer.exp_term * exp(layer.exp_scale * altitude) +
+      layer.linear_term * altitude + layer.constant_term;
+  return clamp(density, Number(0.0), Number(1.0));
+}
+
+Number GetProfileDensity(IN(DensityProfile) profile, Length altitude) {
+  return altitude < profile.layers[0].width ?
+      GetLayerDensity(profile.layers[0], altitude) :
+      GetLayerDensity(profile.layers[1], altitude);
+}
+
 Length ComputeOpticalLengthToTopAtmosphereBoundary(
-    IN(AtmosphereParameters) atmosphere, Length scale_height,
+    IN(AtmosphereParameters) atmosphere, IN(DensityProfile) profile,
     Length r, Number mu) {
   assert(r >= atmosphere.bottom_radius && r <= atmosphere.top_radius);
   assert(mu >= -1.0 && mu <= 1.0);
@@ -277,7 +290,7 @@ Length ComputeOpticalLengthToTopAtmosphereBoundary(
     Length r_i = sqrt(d_i * d_i + 2.0 * r * mu * d_i + r * r);
     // Number density at the current sample point (divided by the number density
     // at the bottom of the atmosphere, yielding a dimensionless number).
-    Number y_i = exp(-(r_i - atmosphere.bottom_radius) / scale_height);
+    Number y_i = GetProfileDensity(profile, r_i - atmosphere.bottom_radius);
     // Sample weight (from the trapezoidal rule).
     Number weight_i = i == 0 || i == SAMPLE_COUNT ? 0.5 : 1.0;
     result += y_i * weight_i * dx;
@@ -297,10 +310,13 @@ DimensionlessSpectrum ComputeTransmittanceToTopAtmosphereBoundary(
   return exp(-(
       atmosphere.rayleigh_scattering *
           ComputeOpticalLengthToTopAtmosphereBoundary(
-              atmosphere, atmosphere.rayleigh_scale_height, r, mu) +
+              atmosphere, atmosphere.rayleigh_density, r, mu) +
       atmosphere.mie_extinction *
           ComputeOpticalLengthToTopAtmosphereBoundary(
-              atmosphere, atmosphere.mie_scale_height, r, mu)));
+              atmosphere, atmosphere.mie_density, r, mu) +
+      atmosphere.absorption_extinction *
+          ComputeOpticalLengthToTopAtmosphereBoundary(
+              atmosphere, atmosphere.absorption_density, r, mu)));
 }
 
 /*
@@ -613,10 +629,10 @@ void ComputeSingleScatteringIntegrand(
             ray_r_mu_intersects_ground) *
         GetTransmittanceToTopAtmosphereBoundary(
             atmosphere, transmittance_texture, r_d, mu_s_d);
-    rayleigh = transmittance * exp(
-        -(r_d - atmosphere.bottom_radius) / atmosphere.rayleigh_scale_height);
-    mie = transmittance * exp(
-        -(r_d - atmosphere.bottom_radius) / atmosphere.mie_scale_height);
+    rayleigh = transmittance * GetProfileDensity(
+        atmosphere.rayleigh_density, r_d - atmosphere.bottom_radius);
+    mie = transmittance * GetProfileDensity(
+        atmosphere.mie_density, r_d - atmosphere.bottom_radius);
   }
 }
 
@@ -1191,10 +1207,10 @@ RadianceDensitySpectrum ComputeScatteringDensity(
       // coefficient, and the phase function for directions omega and omega_i
       // (all this summed over all particle types, i.e. Rayleigh and Mie).
       Number nu2 = dot(omega, omega_i);
-      Number rayleigh_density = exp(
-          -(r - atmosphere.bottom_radius) / atmosphere.rayleigh_scale_height);
-      Number mie_density = exp(
-          -(r - atmosphere.bottom_radius) / atmosphere.mie_scale_height);
+      Number rayleigh_density = GetProfileDensity(
+          atmosphere.rayleigh_density, r - atmosphere.bottom_radius);
+      Number mie_density = GetProfileDensity(
+          atmosphere.mie_density, r - atmosphere.bottom_radius);
       rayleigh_mie += incident_radiance * (
           atmosphere.rayleigh_scattering * rayleigh_density *
               RayleighPhaseFunction(nu2) +
@@ -1658,9 +1674,8 @@ RadianceSpectrum GetSkyRadiance(
     camera = camera + view_ray * distance_to_top_atmosphere_boundary;
     r = atmosphere.top_radius;
     rmu += distance_to_top_atmosphere_boundary;
-  }
-  // If the view ray does not intersect the atmosphere, simply return 0.
-  if (r > atmosphere.top_radius) {
+  } else if (r > atmosphere.top_radius) {
+    // If the view ray does not intersect the atmosphere, simply return 0.
     transmittance = DimensionlessSpectrum(1.0);
     return RadianceSpectrum(0.0 * watt_per_square_meter_per_sr_per_nm);
   }

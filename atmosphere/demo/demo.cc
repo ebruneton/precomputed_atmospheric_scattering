@@ -99,8 +99,9 @@ global variable):
 
 Demo::Demo(int viewport_width, int viewport_height) :
     use_constant_solar_spectrum_(false),
+    use_ozone_(true),
     use_combined_textures_(true),
-    use_luminance_(true),
+    use_luminance_(false),
     do_white_balance_(false),
     show_help_(true),
     program_(0),
@@ -158,6 +159,7 @@ void Demo::InitModel() {
   // (see http://rredc.nrel.gov/solar/spectra/am1.5/ASTMG173/ASTMG173.html),
   // summed and averaged in each bin (e.g. the value for 360nm is the average
   // of the ASTM G-173 values for all wavelengths between 360 and 370nm).
+  // Values in W.m^-2.
   constexpr int kLambdaMin = 360;
   constexpr int kLambdaMax = 830;
   constexpr double kSolarIrradiance[48] = {
@@ -168,6 +170,25 @@ void Demo::InitModel() {
     1.41018, 1.36775, 1.34188, 1.31429, 1.28303, 1.26758, 1.2367, 1.2082,
     1.18737, 1.14683, 1.12362, 1.1058, 1.07124, 1.04992
   };
+  // Values from http://www.iup.uni-bremen.de/gruppen/molspec/databases/
+  // referencespectra/o3spectra2011/index.html for 233K, summed and averaged in
+  // each bin (e.g. the value for 360nm is the average of the original values
+  // for all wavelengths between 360 and 370nm). Values in m^2.
+  constexpr double kOzoneCrossSection[48] = {
+    1.18e-27, 2.182e-28, 2.818e-28, 6.636e-28, 1.527e-27, 2.763e-27, 5.52e-27,
+    8.451e-27, 1.582e-26, 2.316e-26, 3.669e-26, 4.924e-26, 7.752e-26, 9.016e-26,
+    1.48e-25, 1.602e-25, 2.139e-25, 2.755e-25, 3.091e-25, 3.5e-25, 4.266e-25,
+    4.672e-25, 4.398e-25, 4.701e-25, 5.019e-25, 4.305e-25, 3.74e-25, 3.215e-25,
+    2.662e-25, 2.238e-25, 1.852e-25, 1.473e-25, 1.209e-25, 9.423e-26, 7.455e-26,
+    6.566e-26, 5.105e-26, 4.15e-26, 4.228e-26, 3.237e-26, 2.451e-26, 2.801e-26,
+    2.534e-26, 1.624e-26, 1.465e-26, 2.078e-26, 1.383e-26, 7.105e-27
+  };
+  // From https://en.wikipedia.org/wiki/Dobson_unit, in molecules.m^-2.
+  constexpr double kDobsonUnit = 2.687e20;
+  // Maximum number density of ozone molecules, in m^-3 (computed so at to get
+  // 300 Dobson units of ozone - for this we divide 300 DU by the integral of
+  // the ozone density profile defined below, which is equal to 15km).
+  constexpr double kMaxOzoneNumberDensity = 300.0 * kDobsonUnit / 15000.0;
   // Wavelength independent solar irradiance "spectrum" (not physically
   // realistic, but was used in the original implementation).
   constexpr double kConstantSolarIrradiance = 1.5;
@@ -183,11 +204,25 @@ void Demo::InitModel() {
   constexpr double kGroundAlbedo = 0.1;
   constexpr double kMaxSunZenithAngle = 102.0 / 180.0 * kPi;
 
+  DensityProfileLayer
+      rayleigh_layer(0.0, 1.0, -1.0 / kRayleighScaleHeight, 0.0, 0.0);
+  DensityProfileLayer mie_layer(0.0, 1.0, -1.0 / kMieScaleHeight, 0.0, 0.0);
+  // Density profile increasing linearly from 0 to 1 between 10 and 25km, and
+  // decreasing linearly from 1 to 0 between 25 and 40km. This is an approximate
+  // profile from http://www.kln.ac.lk/science/Chemistry/Teaching_Resources/
+  // Documents/Introduction%20to%20atmospheric%20chemistry.pdf (page 10).
+  std::vector<DensityProfileLayer> ozone_density;
+  ozone_density.push_back(
+      DensityProfileLayer(25000.0, 0.0, 0.0, 1.0 / 15000.0, -2.0 / 3.0));
+  ozone_density.push_back(
+      DensityProfileLayer(0.0, 0.0, 0.0, -1.0 / 15000.0, 8.0 / 3.0));
+
   std::vector<double> wavelengths;
   std::vector<double> solar_irradiance;
   std::vector<double> rayleigh_scattering;
   std::vector<double> mie_scattering;
   std::vector<double> mie_extinction;
+  std::vector<double> absorption_extinction;
   std::vector<double> ground_albedo;
   for (int l = kLambdaMin; l <= kLambdaMax; l += 10) {
     double lambda = static_cast<double>(l) * 1e-3;  // micro-meters
@@ -202,14 +237,17 @@ void Demo::InitModel() {
     rayleigh_scattering.push_back(kRayleigh * pow(lambda, -4));
     mie_scattering.push_back(mie * kMieSingleScatteringAlbedo);
     mie_extinction.push_back(mie);
+    absorption_extinction.push_back(use_ozone_ ?
+        kMaxOzoneNumberDensity * kOzoneCrossSection[(l - kLambdaMin) / 10] :
+        0.0);
     ground_albedo.push_back(kGroundAlbedo);
   }
 
   model_.reset(new Model(wavelengths, solar_irradiance, kSunAngularRadius,
-      kBottomRadius, kTopRadius, kRayleighScaleHeight, rayleigh_scattering,
-      kMieScaleHeight, mie_scattering, mie_extinction, kMiePhaseFunctionG,
-      ground_albedo, kMaxSunZenithAngle, kLengthUnitInMeters,
-      use_combined_textures_));
+      kBottomRadius, kTopRadius, {rayleigh_layer}, rayleigh_scattering,
+      {mie_layer}, mie_scattering, mie_extinction, kMiePhaseFunctionG,
+      ozone_density, absorption_extinction, ground_albedo, kMaxSunZenithAngle,
+      kLengthUnitInMeters, use_combined_textures_));
   model_->Init();
 
 /*
@@ -333,6 +371,7 @@ void Demo::HandleRedisplayEvent() const {
          << " h: help\n"
          << " s: solar spectrum (currently: "
          << (use_constant_solar_spectrum_ ? "constant" : "realistic") << ")\n"
+         << " o: ozone (currently: " << (use_ozone_ ? "on" : "off") << ")\n"
          << " t: combine textures (currently: "
          << (use_combined_textures_ ? "on" : "off") << ")\n"
          << " l: use luminance (currently: "
@@ -383,6 +422,8 @@ void Demo::HandleKeyboardEvent(unsigned char key) {
     show_help_ = !show_help_;
   } else if (key == 's') {
     use_constant_solar_spectrum_ = !use_constant_solar_spectrum_;
+  } else if (key == 'o') {
+    use_ozone_ = !use_ozone_;
   } else if (key == 't') {
     use_combined_textures_ = !use_combined_textures_;
   } else if (key == 'l') {
@@ -412,7 +453,7 @@ void Demo::HandleKeyboardEvent(unsigned char key) {
   } else if (key == '9') {
     SetView(1.2e7, 0.0, 0.0, 0.93, -2.0, 10.0);
   }
-  if (key == 's' || key == 't' || key == 'l' || key == 'w') {
+  if (key == 's' || key == 'o' || key == 't' || key == 'l' || key == 'w') {
     InitModel();
   }
 }

@@ -549,12 +549,14 @@ Model::Model(
     const double sun_angular_radius,
     double bottom_radius,
     double top_radius,
-    double rayleigh_scale_height,
+    const std::vector<DensityProfileLayer>& rayleigh_density,
     const std::vector<double>& rayleigh_scattering,
-    double mie_scale_height,
+    const std::vector<DensityProfileLayer>& mie_density,
     const std::vector<double>& mie_scattering,
     const std::vector<double>& mie_extinction,
     double mie_phase_function_g,
+    const std::vector<DensityProfileLayer>& absorption_density,
+    const std::vector<double>& absorption_extinction,
     const std::vector<double>& ground_albedo,
     double max_sun_zenith_angle,
     double length_unit_in_meters,
@@ -566,6 +568,29 @@ Model::Model(
     return "vec3(" + std::to_string(r) + "," + std::to_string(g) + "," +
         std::to_string(b) + ")";
   };
+  auto density_layer =
+      [length_unit_in_meters](const DensityProfileLayer& layer) {
+        return "DensityProfileLayer(" +
+            std::to_string(layer.width / length_unit_in_meters) + "," +
+            std::to_string(layer.exp_term) + "," +
+            std::to_string(layer.exp_scale * length_unit_in_meters) + "," +
+            std::to_string(layer.linear_term * length_unit_in_meters) + "," +
+            std::to_string(layer.constant_term) + ")";
+      };
+  auto density_profile =
+      [density_layer](std::vector<DensityProfileLayer> layers) {
+        constexpr int kLayerCount = 2;
+        while (layers.size() < kLayerCount) {
+          layers.insert(layers.begin(), DensityProfileLayer());
+        }
+        std::string result = "DensityProfile(DensityProfileLayer[" +
+            std::to_string(kLayerCount) + "](";
+        for (int i = 0; i < kLayerCount; ++i) {
+          result += density_layer(layers[i]);
+          result += i < kLayerCount - 1 ? "," : "))";
+        }
+        return result;
+      };
   double sky_k_r, sky_k_g, sky_k_b;
   ComputeSpectralRadianceToLuminanceFactors(wavelengths, solar_irradiance,
       -3 /* lambda_power */, &sky_k_r, &sky_k_g, &sky_k_b);
@@ -603,13 +628,14 @@ Model::Model(
           std::to_string(sun_angular_radius) + ",\n" +
           std::to_string(bottom_radius / length_unit_in_meters) + ",\n" +
           std::to_string(top_radius / length_unit_in_meters) + ",\n" +
-          std::to_string(
-              rayleigh_scale_height / length_unit_in_meters) + ",\n" +
+          density_profile(rayleigh_density) + ",\n" +
           to_string(rayleigh_scattering, length_unit_in_meters) + ",\n" +
-          std::to_string(mie_scale_height / length_unit_in_meters) + ",\n" +
+          density_profile(mie_density) + ",\n" +
           to_string(mie_scattering, length_unit_in_meters) + ",\n" +
           to_string(mie_extinction, length_unit_in_meters) + ",\n" +
           std::to_string(mie_phase_function_g) + ",\n" +
+          density_profile(absorption_density) + ",\n" +
+          to_string(absorption_extinction, length_unit_in_meters) + ",\n" +
           to_string(ground_albedo, 1.0) + ",\n" +
           std::to_string(cos(max_sun_zenith_angle)) + ");\n" +
       "const vec3 SKY_SPECTRAL_RADIANCE_TO_LUMINANCE = vec3(" +

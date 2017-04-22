@@ -64,6 +64,7 @@ class Demo {
       double sun_azimuth_angle_radians, double exposure);
 
   bool use_constant_solar_spectrum_;
+  bool use_ozone_;
   bool use_combined_textures_;
   bool use_luminance_;
   bool do_white_balance_;

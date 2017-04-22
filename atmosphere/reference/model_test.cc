@@ -217,6 +217,7 @@ size and radiance, surface albedos):
     // (see http://rredc.nrel.gov/solar/spectra/am1.5/ASTMG173/ASTMG173.html),
     // summed and averaged in each bin (e.g. the value for 360nm is the average
     // of the ASTM G-173 values for all wavelengths between 360 and 370nm).
+    // Values in W.m^-2.
     constexpr int kLambdaMin = 360;
     constexpr int kLambdaMax = 830;
     constexpr double kSolarIrradiance[48] = {
@@ -234,11 +235,33 @@ size and radiance, surface albedos):
     constexpr double kMieAngstromBeta = 5.328e-3;
     constexpr double kMieSingleScatteringAlbedo = 0.9;
     constexpr double kMiePhaseFunctionG = 0.8;
+    // Values from http://www.iup.uni-bremen.de/gruppen/molspec/databases/
+    // referencespectra/o3spectra2011/index.html for 233K, summed and averaged
+    // in each bin (e.g. the value for 360nm is the average of the original
+    // values for all wavelengths between 360 and 370nm). Values in m^2.
+    constexpr double kOzoneCrossSection[48] = {
+      1.18e-27, 2.182e-28, 2.818e-28, 6.636e-28, 1.527e-27, 2.763e-27, 5.52e-27,
+      8.451e-27, 1.582e-26, 2.316e-26, 3.669e-26, 4.924e-26, 7.752e-26,
+      9.016e-26, 1.48e-25, 1.602e-25, 2.139e-25, 2.755e-25, 3.091e-25, 3.5e-25,
+      4.266e-25, 4.672e-25, 4.398e-25, 4.701e-25, 5.019e-25, 4.305e-25,
+      3.74e-25, 3.215e-25, 2.662e-25, 2.238e-25, 1.852e-25, 1.473e-25,
+      1.209e-25, 9.423e-26, 7.455e-26, 6.566e-26, 5.105e-26, 4.15e-26,
+      4.228e-26, 3.237e-26, 2.451e-26, 2.801e-26, 2.534e-26, 1.624e-26,
+      1.465e-26, 2.078e-26, 1.383e-26, 7.105e-27
+    };
+    // From https://en.wikipedia.org/wiki/Dobson_unit, in molecules.m^-2.
+    constexpr dimensional::Scalar<-2, 0, 0, 0, 0> kDobsonUnit = 2.687e20 / m2;
+    // Maximum number density of ozone molecules, in m^-3 (computed so at to get
+    // 300 Dobson units of ozone - for this we divide 300 DU by the integral of
+    // the ozone density profile defined below, which is equal to 15km).
+    constexpr NumberDensity kMaxOzoneNumberDensity =
+        300.0 * kDobsonUnit / (15.0 * km);
 
     std::vector<SpectralIrradiance> solar_irradiance;
     std::vector<ScatteringCoefficient> rayleigh_scattering;
     std::vector<ScatteringCoefficient> mie_scattering;
     std::vector<ScatteringCoefficient> mie_extinction;
+    std::vector<ScatteringCoefficient> absorption_extinction;
     for (int l = kLambdaMin; l <= kLambdaMax; l += 10) {
       double lambda = static_cast<double>(l) * 1e-3;  // micro-meters
       SpectralIrradiance solar = kSolarIrradiance[(l - kLambdaMin) / 10] *
@@ -250,6 +273,8 @@ size and radiance, surface albedos):
       rayleigh_scattering.push_back(rayleigh);
       mie_scattering.push_back(mie * kMieSingleScatteringAlbedo);
       mie_extinction.push_back(mie);
+      absorption_extinction.push_back(kMaxOzoneNumberDensity *
+          kOzoneCrossSection[(l - kLambdaMin) / 10] * m2);
     }
 
     atmosphere_parameters_.solar_irradiance = IrradianceSpectrum(
@@ -257,15 +282,27 @@ size and radiance, surface albedos):
     atmosphere_parameters_.sun_angular_radius = 0.2678 * deg;
     atmosphere_parameters_.bottom_radius = 6360.0 * km;
     atmosphere_parameters_.top_radius = 6420.0 * km;
-    atmosphere_parameters_.rayleigh_scale_height = kRayleighScaleHeight;
+    atmosphere_parameters_.rayleigh_density.layers[1] = DensityProfileLayer(
+        0.0 * m, 1.0, -1.0 / kRayleighScaleHeight, 0.0 / m, 0.0);
     atmosphere_parameters_.rayleigh_scattering = ScatteringSpectrum(
         kLambdaMin * nm, kLambdaMax * nm, rayleigh_scattering);
-    atmosphere_parameters_.mie_scale_height = kMieScaleHeight;
+    atmosphere_parameters_.mie_density.layers[1] = DensityProfileLayer(
+        0.0 * m, 1.0, -1.0 / kMieScaleHeight, 0.0 / m, 0.0);
     atmosphere_parameters_.mie_scattering = ScatteringSpectrum(
         kLambdaMin * nm, kLambdaMax * nm, mie_scattering);
     atmosphere_parameters_.mie_extinction = ScatteringSpectrum(
         kLambdaMin * nm, kLambdaMax * nm, mie_extinction);
     atmosphere_parameters_.mie_phase_function_g = kMiePhaseFunctionG;
+    // Density profile increasing linearly from 0 to 1 between 10 and 25km, and
+    // decreasing linearly from 1 to 0 between 25 and 40km. Approximate profile
+    // from http://www.kln.ac.lk/science/Chemistry/Teaching_Resources/Documents/
+    // Introduction%20to%20atmospheric%20chemistry.pdf (page 10).
+    atmosphere_parameters_.absorption_density.layers[0] = DensityProfileLayer(
+        25.0 * km, 0.0, 0.0 / km, 1.0 / (15.0 * km), -2.0 / 3.0);
+    atmosphere_parameters_.absorption_density.layers[1] = DensityProfileLayer(
+        0.0 * km, 0.0, 0.0 / km, -1.0 / (15.0 * km), 8.0 / 3.0);
+    atmosphere_parameters_.absorption_extinction = ScatteringSpectrum(
+        kLambdaMin * nm, kLambdaMax * nm, absorption_extinction);
     atmosphere_parameters_.ground_albedo = DimensionlessSpectrum(0.1);
     atmosphere_parameters_.mu_s_min = cos(102.0 * deg);
 
@@ -343,6 +380,11 @@ provide a separate method to initialize it:
     for (unsigned int i = 0; i < spectrum.size(); ++i) {
       wavelengths.push_back(spectrum.GetSample(i).to(nm));
     }
+    auto profile = [](DensityProfileLayer layer) {
+      return atmosphere::DensityProfileLayer(layer.width.to(m),
+          layer.exp_term(), layer.exp_scale.to(1.0 / m),
+          layer.linear_term.to(1.0 / m), layer.constant_term());
+    };
     model_.reset(new atmosphere::Model(
         wavelengths,
         atmosphere_parameters_.solar_irradiance.to(
@@ -350,12 +392,15 @@ provide a separate method to initialize it:
         atmosphere_parameters_.sun_angular_radius.to(rad),
         atmosphere_parameters_.bottom_radius.to(m),
         atmosphere_parameters_.top_radius.to(m),
-        atmosphere_parameters_.rayleigh_scale_height.to(m),
+        {profile(atmosphere_parameters_.rayleigh_density.layers[1])},
         atmosphere_parameters_.rayleigh_scattering.to(1.0 / m),
-        atmosphere_parameters_.mie_scale_height.to(m),
+        {profile(atmosphere_parameters_.mie_density.layers[1])},
         atmosphere_parameters_.mie_scattering.to(1.0 / m),
         atmosphere_parameters_.mie_extinction.to(1.0 / m),
         atmosphere_parameters_.mie_phase_function_g(),
+        {profile(atmosphere_parameters_.absorption_density.layers[0]),
+         profile(atmosphere_parameters_.absorption_density.layers[1])},
+        atmosphere_parameters_.absorption_extinction.to(1.0 / m),
         atmosphere_parameters_.ground_albedo.to(Number::Unit()),
         acos(atmosphere_parameters_.mu_s_min()),
         kLengthUnit.to(m),
@@ -365,8 +410,8 @@ provide a separate method to initialize it:
   }
 
 /*
-<p>Likewise, the CPU model might not needed by all test cases, so we provide a
-separate method to initialize it:
+<p>Likewise, the CPU model might not be needed by all test cases, so we provide
+a separate method to initialize it:
 */
 
   void InitCpuModel() {
@@ -800,7 +845,7 @@ approximations:
     InitCpuModel();
     SetViewParameters(65.0 * deg, 90.0 * deg, true /* use_luminance */);
     ExpectLess(
-        43.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+        40.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
   }
 
 /*
@@ -822,7 +867,7 @@ compared to the previous test case:
     InitCpuModel();
     SetViewParameters(65.0 * deg, 90.0 * deg, true /* use_luminance */);
     ExpectLess(
-        43.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+        40.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
   }
 
 /*
@@ -843,7 +888,7 @@ previous test, so we expect a larger difference between the GPU and CPU results
     InitCpuModel();
     SetViewParameters(88.0 * deg, 90.0 * deg, true /* use_luminance */);
     ExpectLess(
-        37.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+        35.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
   }
 
 /*
@@ -854,8 +899,6 @@ convert the sky and sun radiance to sRGB, and then multiply these sRGB values by
 the albedo, sampled at 3 wavelengths - while the correct method, used on CPU, is
 to perform all the computations, including the albedo multiplication, in a full
 spectral way, and to convert to XYZ and then to sRGB only at the very end).
-Because of this additional approximation, we expect a larger difference between
-the GPU and CPU model than in the previous test cases:
 */
 
   void TestLuminanceCombineTexturesSpectralAlbedo() {
@@ -886,7 +929,7 @@ dependent albedo values (see the previous test case):
     InitCpuModel();
     SetViewParameters(88.0 * deg, 90.0 * deg, true /* use_luminance */);
     ExpectLess(
-        37.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+        35.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
   }
 
 /*

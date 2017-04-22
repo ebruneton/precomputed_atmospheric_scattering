@@ -68,6 +68,8 @@ implementation</a>:
     this by comparing the GPU results against full spectral CPU renderings).
   </li>
 </ul>
+In addition, the new implementation adds support for the ozone layer, and for
+custom density profiles for air molecules and aerosols.
 
 <p>The sections below explain how this new implementation can be used, present
 its structure and its documentation and give more details about its tests.
@@ -81,12 +83,9 @@ in <a href="atmosphere/model.h.html">model.h</a>, and as demonstrated in the
 demo in <code>atmosphere/demo</code>. To run this demo, simply type <code>make
 demo</code> in the main directory.
 
-<p>The default settings of this demo use the real solar spectrum, and display
-luminance values computed as described in Section 14.3 of
-<a href="https://arxiv.org/pdf/1612.04336.pdf">A Qualitative and Quantitative
-Evaluation of 8 Clear Sky Models</a>. To simulate the settings of the original
-implementation, set the solar spectrum to "constant", and turn off the
-"use luminance" setting.
+<p>The default settings of this demo use the real solar spectrum, with an ozone
+layer. To simulate the settings of the original implementation, set the solar
+spectrum to "constant", and turn off the ozone layer.
 
 <h2>Structure</h2>
 

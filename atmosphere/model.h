@@ -122,6 +122,26 @@ along the specified segment at the 3 wavelengths <code>kLambdaR</code>,
 
 namespace atmosphere {
 
+// An atmosphere layer of width 'width' (in m), and whose density is defined as
+//   'exp_term' * exp('exp_scale' * h) + 'linear_term' * h + 'constant_term',
+// clamped to [0,1], and where h is the altitude (in m). 'exp_term' and
+// 'constant_term' are unitless, while 'exp_scale' and 'linear_term' are in
+// m^-1.
+class DensityProfileLayer {
+ public:
+  DensityProfileLayer() : DensityProfileLayer(0.0, 0.0, 0.0, 0.0, 0.0) {}
+  DensityProfileLayer(double width, double exp_term, double exp_scale,
+                      double linear_term, double constant_term)
+      : width(width), exp_term(exp_term), exp_scale(exp_scale),
+        linear_term(linear_term), constant_term(constant_term) {
+  }
+  double width;
+  double exp_term;
+  double exp_scale;
+  double linear_term;
+  double constant_term;
+};
+
 class Model {
  public:
   Model(
@@ -144,28 +164,51 @@ class Model {
     // The distance between the planet center and the top of the atmosphere,
     // in m.
     double top_radius,
-    // The scale height of air molecules, in m, meaning that their density is
-    // proportional to exp(-h / rayleigh_scale_height), with h the altitude
-    // (with the bottom of the atmosphere at altitude 0).
-    double rayleigh_scale_height,
-    // The scattering coefficient of air molecules at the bottom of the
-    // atmosphere, as a function of wavelength, in m^-1. This vector must have
-    // the same size as the wavelength parameter.
+    // The density profile of air molecules, i.e. a function from altitude to
+    // dimensionless values between 0 (null density) and 1 (maximum density).
+    // Layers must be sorted from bottom to top. The width of the last layer is
+    // ignored, i.e. it always extend to the top atmosphere boundary. At most 2
+    // layers can be specified.
+    const std::vector<DensityProfileLayer>& rayleigh_density,
+    // The scattering coefficient of air molecules at the altitude where their
+    // density is maximum (usually the bottom of the atmosphere), as a function
+    // of wavelength, in m^-1. The scattering coefficient at altitude h is equal
+    // to 'rayleigh_scattering' times 'rayleigh_density' at this altitude. This
+    // vector must have the same size as the wavelength parameter.
     const std::vector<double>& rayleigh_scattering,
-    // The scale height of aerosols, in m, meaning that their density is
-    // proportional to exp(-h / mie_scale_height), with h the altitude.
-    double mie_scale_height,
-    // The scattering coefficient of aerosols at the bottom of the atmosphere,
-    // as a function of wavelength, in m^-1. This vector must have the same size
-    // as the wavelength parameter.
+    // The density profile of aerosols, i.e. a function from altitude to
+    // dimensionless values between 0 (null density) and 1 (maximum density).
+    // Layers must be sorted from bottom to top. The width of the last layer is
+    // ignored, i.e. it always extend to the top atmosphere boundary. At most 2
+    // layers can be specified.
+    const std::vector<DensityProfileLayer>& mie_density,
+    // The scattering coefficient of aerosols at the altitude where their
+    // density is maximum (usually the bottom of the atmosphere), as a function
+    // of wavelength, in m^-1. The scattering coefficient at altitude h is equal
+    // to 'mie_scattering' times 'mie_density' at this altitude. This vector
+    // must have the same size as the wavelength parameter.
     const std::vector<double>& mie_scattering,
-    // The extinction coefficient of aerosols at the bottom of the atmosphere,
-    // as a function of wavelength, in m^-1. This vector must have the same size
-    // as the wavelength parameter.
+    // The extinction coefficient of aerosols at the altitude where their
+    // density is maximum (usually the bottom of the atmosphere), as a function
+    // of wavelength, in m^-1. The extinction coefficient at altitude h is equal
+    // to 'mie_extinction' times 'mie_density' at this altitude. This vector
+    // must have the same size as the wavelength parameter.
     const std::vector<double>& mie_extinction,
     // The asymetry parameter for the Cornette-Shanks phase function for the
     // aerosols.
     double mie_phase_function_g,
+    // The density profile of air molecules that absorb light (e.g. ozone), i.e.
+    // a function from altitude to dimensionless values between 0 (null density)
+    // and 1 (maximum density). Layers must be sorted from bottom to top. The
+    // width of the last layer is ignored, i.e. it always extend to the top
+    // atmosphere boundary. At most 2 layers can be specified.
+    const std::vector<DensityProfileLayer>& absorption_density,
+    // The extinction coefficient of molecules that absorb light (e.g. ozone) at
+    // the altitude where their density is maximum, as a function of wavelength,
+    // in m^-1. The extinction coefficient at altitude h is equal to
+    // 'absorption_extinction' times 'absorption_density' at this altitude. This
+    // vector must have the same size as the wavelength parameter.
+    const std::vector<double>& absorption_extinction,
     // The average albedo of the ground, as a function of wavelength. This
     // vector must have the same size as the wavelength parameter.
     const std::vector<double>& ground_albedo,
