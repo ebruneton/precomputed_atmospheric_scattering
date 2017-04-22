@@ -164,8 +164,12 @@ Length DistanceToBottomAtmosphereBoundary(
 bool RayIntersectsGround(
     const AtmosphereParameters& atmosphere, Length r, Number mu);
 
+Number GetLayerDensity(const DensityProfileLayer& layer, Length altitude);
+
+Number GetProfileDensity(const DensityProfile& profile, Length altitude);
+
 Length ComputeOpticalLengthToTopAtmosphereBoundary(
-    const AtmosphereParameters& atmosphere, Length scale_height,
+    const AtmosphereParameters& atmosphere, const DensityProfile& profile,
     Length r, Number mu);
 
 DimensionlessSpectrum ComputeTransmittanceToTopAtmosphereBoundary(
