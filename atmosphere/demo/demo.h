@@ -66,6 +66,7 @@ class Demo {
   bool use_constant_solar_spectrum_;
   bool use_ozone_;
   bool use_combined_textures_;
+  bool use_half_precision_;
   bool use_luminance_;
   bool do_white_balance_;
   bool show_help_;

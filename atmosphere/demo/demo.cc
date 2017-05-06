@@ -101,6 +101,7 @@ Demo::Demo(int viewport_width, int viewport_height) :
     use_constant_solar_spectrum_(false),
     use_ozone_(true),
     use_combined_textures_(true),
+    use_half_precision_(true),
     use_luminance_(false),
     do_white_balance_(false),
     show_help_(true),
@@ -202,7 +203,8 @@ void Demo::InitModel() {
   constexpr double kMieSingleScatteringAlbedo = 0.9;
   constexpr double kMiePhaseFunctionG = 0.8;
   constexpr double kGroundAlbedo = 0.1;
-  constexpr double kMaxSunZenithAngle = 102.0 / 180.0 * kPi;
+  const double max_sun_zenith_angle =
+      (use_half_precision_ ? 102.0 : 120.0) / 180.0 * kPi;
 
   DensityProfileLayer
       rayleigh_layer(0.0, 1.0, -1.0 / kRayleighScaleHeight, 0.0, 0.0);
@@ -246,8 +248,8 @@ void Demo::InitModel() {
   model_.reset(new Model(wavelengths, solar_irradiance, kSunAngularRadius,
       kBottomRadius, kTopRadius, {rayleigh_layer}, rayleigh_scattering,
       {mie_layer}, mie_scattering, mie_extinction, kMiePhaseFunctionG,
-      ozone_density, absorption_extinction, ground_albedo, kMaxSunZenithAngle,
-      kLengthUnitInMeters, use_combined_textures_));
+      ozone_density, absorption_extinction, ground_albedo, max_sun_zenith_angle,
+      kLengthUnitInMeters, use_combined_textures_, use_half_precision_));
   model_->Init();
 
 /*
@@ -374,6 +376,8 @@ void Demo::HandleRedisplayEvent() const {
          << " o: ozone (currently: " << (use_ozone_ ? "on" : "off") << ")\n"
          << " t: combine textures (currently: "
          << (use_combined_textures_ ? "on" : "off") << ")\n"
+         << " p: half precision (currently: "
+         << (use_half_precision_ ? "on" : "off") << ")\n"
          << " l: use luminance (currently: "
          << (use_luminance_ ? "on" : "off") << ")\n"
          << " w: white balance (currently: "
@@ -426,6 +430,8 @@ void Demo::HandleKeyboardEvent(unsigned char key) {
     use_ozone_ = !use_ozone_;
   } else if (key == 't') {
     use_combined_textures_ = !use_combined_textures_;
+  } else if (key == 'p') {
+    use_half_precision_ = !use_half_precision_;
   } else if (key == 'l') {
     use_luminance_ = !use_luminance_;
   } else if (key == 'w') {
@@ -453,7 +459,8 @@ void Demo::HandleKeyboardEvent(unsigned char key) {
   } else if (key == '9') {
     SetView(1.2e7, 0.0, 0.0, 0.93, -2.0, 10.0);
   }
-  if (key == 's' || key == 'o' || key == 't' || key == 'l' || key == 'w') {
+  if (key == 's' || key == 'o' || key == 't' || key == 'p' || key == 'l' ||
+      key == 'w') {
     InitModel();
   }
 }

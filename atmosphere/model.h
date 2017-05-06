@@ -215,7 +215,8 @@ class Model {
     // The maximum Sun zenith angle for which atmospheric scattering must be
     // precomputed, in radians (for maximum precision, use the smallest Sun
     // zenith angle yielding negligible sky light radiance values. For instance,
-    // for the Earth case, 102 degrees is a good choice).
+    // for the Earth case, 102 degrees is a good choice for most cases (120
+    // degrees is necessary for very high exposure values).
     double max_sun_zenith_angle,
     // The length unit used in your shaders and meshes. This is the length unit
     // which must be used when calling the atmosphere model shader functions.
@@ -223,7 +224,11 @@ class Model {
     // Whether to pack the (red component of the) single Mie scattering with the
     // Rayleigh and multiple scattering in a single texture, or to store the
     // (3 components of the) single Mie scattering in a separate texture.
-    bool combine_scattering_textures);
+    bool combine_scattering_textures,
+    // Whether to use half precision floats (16 bits) or single precision floats
+    // (32 bits) for the precomputed textures. Half precision is sufficient for
+    // most cases, except for very high exposure values.
+    bool half_precision);
 
   ~Model();
 
@@ -252,6 +257,7 @@ class Model {
   static constexpr double kLambdaB = 440.0;
 
  private:
+  bool half_precision_;
   std::string glsl_header_;
   unsigned int transmittance_texture_;
   unsigned int scattering_texture_;
