@@ -1189,7 +1189,7 @@ quadrilinearly interpolated lookup in the precomputed single scattering texture.
 </pre>
 <p><i>Multiple scattering, step 1</i>: check that the numerical integration in
 <code>ComputeScatteringDensity</code> gives the expected result in two cases
-where the integral can be computed anaytically:
+where the integral can be computed analytically:
 <ul>
 <li>if the incident radiance from the $(n-1)$-th order is the same in all
 directions, and if the ground albedo is $0$. In this case the scattered radiance
@@ -1245,7 +1245,7 @@ horizontal direction for the scattered radiance).</li>
 </pre>
 <p><i>Multiple scattering, step 2</i>: check that the numerical integration in
 <code>ComputeMultipleScattering</code> gives the expected result in some cases
-where the integral can be computed anaytically. If the radiance computed from
+where the integral can be computed analytically. If the radiance computed from
 step 1 is the same everywhere and in all directions, and if the transmittance
 is 1, then the numerical integration in <code>ComputeMultipleScattering</code>
 should simply be equal to the radiance times the distance to the nearest

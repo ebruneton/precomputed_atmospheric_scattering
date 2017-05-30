@@ -139,8 +139,8 @@
 precompute the transmittance, scattering and irradiance textures. The C++
 functions to precompute them are provided in
 <a href="functions.h.html">functions.h</a>, but they are not sufficient.
-They must be call on each texel of the precomputed textures, and these textures
-must be computed in the correct order, with the correct input and output
+They must be called on each texel of the precomputed textures, and these
+textures must be computed in the correct order, with the correct input an output
 textures, to precompute each scattering order in sequence, as described in
 Algorithm 4.1 of <a href="https://hal.inria.fr/inria-00288758/en">our paper</a>.
 This is the role of the following code.
@@ -344,6 +344,12 @@ used to compute the sky radiance and the sun and sky irradiance. The functions
 for doing that are provided in <a href="functions.h.html">functions.h</a> and we
 just need here to wrap them in their corresponding methods:
 <pre class="prettyprint">
+RadianceSpectrum Model::GetSolarRadiance() const {
+  SolidAngle sun_solid_angle = 2.0 * PI *
+      (1.0 - cos(atmosphere_.sun_angular_radius)) * sr;
+  return atmosphere_.solar_irradiance * (1.0 / sun_solid_angle);
+}
+
 RadianceSpectrum Model::GetSkyRadiance(Position camera, Direction view_ray,
     Length shadow_length, Direction sun_direction,
     DimensionlessSpectrum* transmittance) const {

@@ -150,7 +150,6 @@ uniform float exposure;
 uniform vec3 white_point;
 uniform vec3 earth_center;
 uniform vec3 sun_direction;
-uniform vec3 sun_radiance;
 uniform vec2 sun_size;
 in vec3 view_ray;
 layout(location = 0) out vec3 color;
@@ -168,11 +167,13 @@ const vec3 kSphereAlbedo = vec3(0.8);
 const vec3 kGroundAlbedo = vec3(0.0, 0.0, 0.04);
 
 #ifdef USE_LUMINANCE
+#define GetSolarRadiance GetSolarLuminance
 #define GetSkyRadiance GetSkyLuminance
 #define GetSkyRadianceToPoint GetSkyLuminanceToPoint
 #define GetSunAndSkyIrradiance GetSunAndSkyIlluminance
 #endif
 
+vec3 GetSolarRadiance();
 vec3 GetSkyRadiance(vec3 camera, vec3 view_ray, float shadow_length,
     vec3 sun_direction, out vec3 transmittance);
 vec3 GetSkyRadianceToPoint(vec3 camera, vec3 point, float shadow_length,
@@ -448,7 +449,7 @@ on the ground by the sun and sky visibility factors):
   }
 </pre>
 <p>Finally, we compute the radiance and transmittance of the sky, and composite
-together, from back to front, the radiance and opacities of all the ojects of
+together, from back to front, the radiance and opacities of all the objects of
 the scene:
 <pre class="prettyprint">
   // Compute the radiance of the sky.
@@ -461,7 +462,7 @@ the scene:
 
   // If the view ray intersects the Sun, add the Sun radiance.
   if (dot(view_direction, sun_direction) &gt; sun_size.y) {
-    radiance = radiance + transmittance * sun_radiance;
+    radiance = radiance + transmittance * GetSolarRadiance();
   }
   radiance = mix(radiance, ground_radiance, ground_alpha);
   radiance = mix(radiance, sphere_radiance, sphere_alpha);

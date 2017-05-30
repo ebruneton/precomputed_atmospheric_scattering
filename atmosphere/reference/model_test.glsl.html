@@ -429,7 +429,7 @@ the scene:
 
   // If the view ray intersects the Sun, add the Sun radiance.
   if (dot(view_direction, sun_direction_) &gt; sun_size_.y) {
-    radiance = radiance + transmittance * sun_radiance_;
+    radiance = radiance + transmittance * GetSolarRadiance();
   }
   radiance = radiance * (1.0 - ground_alpha) + ground_radiance * ground_alpha;
   radiance = radiance * (1.0 - sphere_alpha) + sphere_radiance * sphere_alpha;
