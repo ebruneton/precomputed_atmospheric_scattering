@@ -128,7 +128,6 @@ const char* kFragmentShader = R"(
     uniform float exposure_;
     uniform vec3 earth_center_;
     uniform vec3 sun_direction_;
-    uniform vec3 sun_radiance_;
     uniform vec2 sun_size_;
     uniform vec3 ground_albedo_;
     uniform vec3 sphere_albedo_;
@@ -136,11 +135,13 @@ const char* kFragmentShader = R"(
     layout(location = 0) out vec3 color;
 
     #ifdef USE_LUMINANCE
+    #define GetSolarRadiance GetSolarLuminance
     #define GetSkyRadiance GetSkyLuminance
     #define GetSkyRadianceToPoint GetSkyLuminanceToPoint
     #define GetSunAndSkyIrradiance GetSunAndSkyIlluminance
     #endif
 
+    vec3 GetSolarRadiance();
     vec3 GetSkyRadiance(vec3 camera, vec3 view_ray, float shadow_length,
         vec3 sun_direction, out vec3 transmittance);
     vec3 GetSkyRadianceToPoint(vec3 camera, vec3 point, float shadow_length,
@@ -309,10 +310,6 @@ size and radiance, surface albedos):
     earth_center_ =
         Position(0.0 * m, 0.0 * m, -atmosphere_parameters_.bottom_radius);
 
-    SolidAngle sun_solid_angle = 2.0 * PI *
-        (1.0 - cos(atmosphere_parameters_.sun_angular_radius)) * sr;
-    sun_radiance_ =
-        atmosphere_parameters_.solar_irradiance * (1.0 / sun_solid_angle);
     sun_size_ = dimensional::vec2(
         tan(atmosphere_parameters_.sun_angular_radius),
         cos(atmosphere_parameters_.sun_angular_radius));
@@ -543,10 +540,6 @@ method:
         sun_direction_.x(),
         sun_direction_.y(),
         sun_direction_.z());
-    glUniform3f(glGetUniformLocation(program_, "sun_radiance_"),
-        sun_radiance_(kLambdaR).to(watt_per_square_meter_per_sr_per_nm),
-        sun_radiance_(kLambdaG).to(watt_per_square_meter_per_sr_per_nm),
-        sun_radiance_(kLambdaB).to(watt_per_square_meter_per_sr_per_nm));
     glUniform2f(glGetUniformLocation(program_, "sun_size_"),
         sun_size_.x(), sun_size_.y());
     glUniform3f(glGetUniformLocation(program_, "ground_albedo_"),
@@ -605,6 +598,10 @@ directly (after the definitions of the functions and macros it requires - the
 "uniforms" are provided by the fields of the test fixture class, defined at the
 end of this file):
 */
+
+  RadianceSpectrum GetSolarRadiance() {
+    return reference_model_->GetSolarRadiance();
+  }
 
   RadianceSpectrum GetSkyRadiance(Position camera, Direction view_ray,
       Length shadow_length, Direction sun_direction,
@@ -944,7 +941,6 @@ and registers the test cases in the test framework:
   DimensionlessSpectrum ground_albedo_;
   DimensionlessSpectrum sphere_albedo_;
   Position earth_center_;
-  RadianceSpectrum sun_radiance_;
   dimensional::vec2 sun_size_;
 
   std::unique_ptr<atmosphere::Model> model_;

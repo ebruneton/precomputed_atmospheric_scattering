@@ -151,7 +151,7 @@ Demo::~Demo() {
 /*
 <p>The "real" initialization work, which is specific to our atmosphere model,
 is done in the following method. It starts with the creation of an atmosphere
-<code>Model</code> instance, with parameters corresponding the to Earth
+<code>Model</code> instance, with parameters corresponding to the Earth
 atmosphere:
 */
 
@@ -308,10 +308,6 @@ because our demo app does not have any texture of its own):
       white_point_r, white_point_g, white_point_b);
   glUniform3f(glGetUniformLocation(program_, "earth_center"),
       0.0, 0.0, -kBottomRadius / kLengthUnitInMeters);
-  glUniform3f(glGetUniformLocation(program_, "sun_radiance"),
-      kSolarIrradiance[0] / kSunSolidAngle,
-      kSolarIrradiance[1] / kSunSolidAngle,
-      kSolarIrradiance[2] / kSunSolidAngle);
   glUniform2f(glGetUniformLocation(program_, "sun_size"),
       tan(kSunAngularRadius),
       cos(kSunAngularRadius));

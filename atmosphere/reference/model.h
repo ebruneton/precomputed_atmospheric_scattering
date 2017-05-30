@@ -62,6 +62,8 @@ class Model {
 
   void Init(unsigned int num_scattering_orders = 4);
 
+  RadianceSpectrum GetSolarRadiance() const;
+
   RadianceSpectrum GetSkyRadiance(Position camera, Direction view_ray,
       Length shadow_length, Direction sun_direction,
       DimensionlessSpectrum* transmittance) const;

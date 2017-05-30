@@ -211,6 +211,10 @@ const char* kAtmosphereShader = R"(
     uniform sampler3D scattering_texture;
     uniform sampler3D single_mie_scattering_texture;
     uniform sampler2D irradiance_texture;
+    RadianceSpectrum GetSolarRadiance() {
+      return ATMOSPHERE.solar_irradiance /
+          (PI * ATMOSPHERE.sun_angular_radius * ATMOSPHERE.sun_angular_radius);
+    }
     RadianceSpectrum GetSkyRadiance(
         Position camera, Direction view_ray, Length shadow_length,
         Direction sun_direction, out DimensionlessSpectrum transmittance) {
@@ -230,6 +234,9 @@ const char* kAtmosphereShader = R"(
        out IrradianceSpectrum sky_irradiance) {
       return GetSunAndSkyIrradiance(ATMOSPHERE, transmittance_texture,
           irradiance_texture, p, normal, sun_direction, sky_irradiance);
+    }
+    Luminance3 GetSolarLuminance() {
+      return GetSolarRadiance() * SUN_SPECTRAL_RADIANCE_TO_LUMINANCE;
     }
     Luminance3 GetSkyLuminance(
         Position camera, Direction view_ray, Length shadow_length,

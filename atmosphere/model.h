@@ -154,7 +154,7 @@ class Model {
     // shader performance).
     const std::vector<double>& wavelengths,
     // The solar irradiance at the top of the atmosphere, in W/m^2/nm. This
-    // vector must have the same size as the wavelength parameter.
+    // vector must have the same size as the wavelengths parameter.
     const std::vector<double>& solar_irradiance,
     // The sun's angular radius, in radians.
     double sun_angular_radius,
@@ -174,7 +174,7 @@ class Model {
     // density is maximum (usually the bottom of the atmosphere), as a function
     // of wavelength, in m^-1. The scattering coefficient at altitude h is equal
     // to 'rayleigh_scattering' times 'rayleigh_density' at this altitude. This
-    // vector must have the same size as the wavelength parameter.
+    // vector must have the same size as the wavelengths parameter.
     const std::vector<double>& rayleigh_scattering,
     // The density profile of aerosols, i.e. a function from altitude to
     // dimensionless values between 0 (null density) and 1 (maximum density).
@@ -186,13 +186,13 @@ class Model {
     // density is maximum (usually the bottom of the atmosphere), as a function
     // of wavelength, in m^-1. The scattering coefficient at altitude h is equal
     // to 'mie_scattering' times 'mie_density' at this altitude. This vector
-    // must have the same size as the wavelength parameter.
+    // must have the same size as the wavelengths parameter.
     const std::vector<double>& mie_scattering,
     // The extinction coefficient of aerosols at the altitude where their
     // density is maximum (usually the bottom of the atmosphere), as a function
     // of wavelength, in m^-1. The extinction coefficient at altitude h is equal
     // to 'mie_extinction' times 'mie_density' at this altitude. This vector
-    // must have the same size as the wavelength parameter.
+    // must have the same size as the wavelengths parameter.
     const std::vector<double>& mie_extinction,
     // The asymetry parameter for the Cornette-Shanks phase function for the
     // aerosols.
@@ -207,10 +207,10 @@ class Model {
     // the altitude where their density is maximum, as a function of wavelength,
     // in m^-1. The extinction coefficient at altitude h is equal to
     // 'absorption_extinction' times 'absorption_density' at this altitude. This
-    // vector must have the same size as the wavelength parameter.
+    // vector must have the same size as the wavelengths parameter.
     const std::vector<double>& absorption_extinction,
     // The average albedo of the ground, as a function of wavelength. This
-    // vector must have the same size as the wavelength parameter.
+    // vector must have the same size as the wavelengths parameter.
     const std::vector<double>& ground_albedo,
     // The maximum Sun zenith angle for which atmospheric scattering must be
     // precomputed, in radians (for maximum precision, use the smallest Sun
@@ -236,7 +236,8 @@ class Model {
 
   unsigned int GetShader() const { return atmosphere_shader_; }
 
-  void SetProgramUniforms(unsigned int program,
+  void SetProgramUniforms(
+      unsigned int program,
       unsigned int transmittance_texture_unit,
       unsigned int scattering_texture_unit,
       unsigned int irradiance_texture_unit,
