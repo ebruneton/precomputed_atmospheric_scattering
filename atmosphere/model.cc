@@ -177,7 +177,7 @@ const char kComputeIndirectIrradianceShader[] = R"(
       delta_irradiance = ComputeIndirectIrradianceTexture(
           ATMOSPHERE, single_rayleigh_scattering_texture,
           single_mie_scattering_texture, multiple_scattering_texture,
-          gl_FragCoord.xy, scattering_order - 1);
+          gl_FragCoord.xy, scattering_order);
       irradiance = delta_irradiance;
     })";
 
@@ -858,7 +858,8 @@ void Model::Init(unsigned int num_scattering_orders) {
         "single_mie_scattering_texture", delta_mie_scattering_texture, 1);
     compute_indirect_irradiance.BindTexture3d(
         "multiple_scattering_texture", delta_multiple_scattering_texture, 2);
-    compute_indirect_irradiance.BindInt("scattering_order", scattering_order);
+    compute_indirect_irradiance.BindInt("scattering_order",
+        scattering_order - 1);
     glEnablei(GL_BLEND, 1);
     glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
     glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ONE, GL_ONE);

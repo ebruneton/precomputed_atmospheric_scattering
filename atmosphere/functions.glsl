@@ -1445,8 +1445,6 @@ IrradianceSpectrum ComputeIndirectIrradiance(
   vec3 omega_s = vec3(sqrt(1.0 - mu_s * mu_s), 0.0, mu_s);
   for (int j = 0; j < SAMPLE_COUNT / 2; ++j) {
     Angle theta = (Number(j) + 0.5) * dtheta;
-    bool ray_r_theta_intersects_ground =
-        RayIntersectsGround(atmosphere, r, cos(theta));
     for (int i = 0; i < 2 * SAMPLE_COUNT; ++i) {
       Angle phi = (Number(i) + 0.5) * dphi;
       vec3 omega =
@@ -1456,7 +1454,7 @@ IrradianceSpectrum ComputeIndirectIrradiance(
       Number nu = dot(omega, omega_s);
       result += GetScattering(atmosphere, single_rayleigh_scattering_texture,
           single_mie_scattering_texture, multiple_scattering_texture,
-          r, omega.z, mu_s, nu, ray_r_theta_intersects_ground,
+          r, omega.z, mu_s, nu, false /* ray_r_theta_intersects_ground */,
           scattering_order) *
               omega.z * domega;
     }
