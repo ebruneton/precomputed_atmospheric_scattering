@@ -73,7 +73,7 @@ namespace atmosphere {
 
 namespace {
 
-const char* kVertexShader = R"(
+const char kVertexShader[] = R"(
     #version 330
     layout(location = 0) in vec2 vertex;
     void main() {
@@ -85,7 +85,7 @@ const char* kVertexShader = R"(
 want to write):
 */
 
-const char* kGeometryShader = R"(
+const char kGeometryShader[] = R"(
     #version 330
     #extension GL_EXT_geometry_shader4 : enable
     layout(triangles) in;
@@ -119,14 +119,14 @@ parameters, to really get a complete shader:
 #include "atmosphere/definitions.glsl.inc"
 #include "atmosphere/functions.glsl.inc"
 
-const char* kComputeTransmittanceShader = R"(
+const char kComputeTransmittanceShader[] = R"(
     layout(location = 0) out vec3 transmittance;
     void main() {
       transmittance = ComputeTransmittanceToTopAtmosphereBoundaryTexture(
           ATMOSPHERE, gl_FragCoord.xy);
     })";
 
-const char* kComputeDirectIrradianceShader = R"(
+const char kComputeDirectIrradianceShader[] = R"(
     layout(location = 0) out vec3 delta_irradiance;
     layout(location = 1) out vec3 irradiance;
     uniform sampler2D transmittance_texture;
@@ -136,7 +136,7 @@ const char* kComputeDirectIrradianceShader = R"(
       irradiance = vec3(0.0);
     })";
 
-const char* kComputeSingleScatteringShader = R"(
+const char kComputeSingleScatteringShader[] = R"(
     layout(location = 0) out vec3 delta_rayleigh;
     layout(location = 1) out vec3 delta_mie;
     layout(location = 2) out vec4 scattering;
@@ -166,7 +166,7 @@ const char* kComputeScatteringDensityShader = R"(
           scattering_order);
     })";
 
-const char* kComputeIndirectIrradianceShader = R"(
+const char kComputeIndirectIrradianceShader[] = R"(
     layout(location = 0) out vec3 delta_irradiance;
     layout(location = 1) out vec3 irradiance;
     uniform sampler3D single_rayleigh_scattering_texture;
@@ -181,7 +181,7 @@ const char* kComputeIndirectIrradianceShader = R"(
       irradiance = delta_irradiance;
     })";
 
-const char* kComputeMultipleScatteringShader = R"(
+const char kComputeMultipleScatteringShader[] = R"(
     layout(location = 0) out vec3 delta_multiple_scattering;
     layout(location = 1) out vec4 scattering;
     uniform sampler2D transmittance_texture;
@@ -202,11 +202,12 @@ which can be done by calling the corresponding functions in
 <a href="functions.glsl.html#rendering">functions.glsl</a>, with the precomputed
 texture arguments taken from uniform variables (note also the
 *<code>_RADIANCE_TO_LUMINANCE</code> conversion constants in the last functions:
-they are computed in the second part below, and their definitions are
-concatenated to this GLSL code to get a fully functional shader).
+they are computed in the <a href="#utilities">second part</a> below, and their
+definitions are concatenated to this GLSL code to get a fully functional
+shader).
 */
 
-const char* kAtmosphereShader = R"(
+const char kAtmosphereShader[] = R"(
     uniform sampler2D transmittance_texture;
     uniform sampler3D scattering_texture;
     uniform sampler3D single_mie_scattering_texture;
@@ -544,7 +545,7 @@ of GLSL code that defines an <code>ATMOSPHERE</code> constant containing the
 atmosphere parameters (we use constants instead of uniforms to enable constant
 folding and propagation optimizations in the GLSL compiler), concatenated with
 <a href="functions.glsl.html">functions.glsl</a>, and with
-<code>ATMOSPHERE_SHADER</code>, to get the shader exposed by our API in
+<code>kAtmosphereShader</code>, to get the shader exposed by our API in
 <code>GetShader</code>. It also allocates the precomputed textures, but does not
 initialize them.
 */

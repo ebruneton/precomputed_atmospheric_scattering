@@ -248,7 +248,8 @@ a texture in parallel).
 <p>Once the textures have been computed or loaded from the cache, they can be
 used to compute the sky radiance and the sun and sky irradiance. The functions
 for doing that are provided in <a href="functions.h.html">functions.h</a> and we
-just need here to wrap them in their corresponding methods:
+just need here to wrap them in their corresponding methods (except for the solar
+radiance, which can be directly computed from the model parameters):
 */
 
 RadianceSpectrum Model::GetSolarRadiance() const {

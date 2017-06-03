@@ -121,6 +121,6 @@ output/Debug/atmosphere/demo/demo.o output/Release/atmosphere/demo/demo.o: \
     atmosphere/demo/demo.glsl.inc
 
 %.glsl.inc: %.glsl
-	sed -e '1i const char* $(*F)_glsl = R"***(' -e '$$a )***";' \
+	sed -e '1i const char $(*F)_glsl[] = R"***(' -e '$$a )***";' \
 	    -e '/^\/\*/,/\*\/$$/d' -e '/^ *\/\//d' -e '/^$$/d' $< > $@
 

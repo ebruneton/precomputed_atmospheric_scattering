@@ -70,7 +70,7 @@ constexpr double kSunAngularRadius = 0.00935 / 2.0;
 constexpr double kSunSolidAngle = kPi * kSunAngularRadius * kSunAngularRadius;
 constexpr double kLengthUnitInMeters = 1000.0;
 
-const char* kVertexShader = R"(
+const char kVertexShader[] = R"(
     #version 330
     uniform mat4 model_from_view;
     uniform mat4 view_from_clip;
@@ -259,7 +259,8 @@ to get the final scene rendering program:
 */
 
   GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vertex_shader, 1, &kVertexShader, NULL);
+  const char* const vertex_shader_source = kVertexShader;
+  glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
   glCompileShader(vertex_shader);
 
   const std::string fragment_shader_str =
@@ -333,7 +334,8 @@ void Demo::HandleRedisplayEvent() const {
   float uz[3] = { sin_z * cos_a, sin_z * sin_a, cos_z };
   float l = view_distance_meters_ / kLengthUnitInMeters;
 
-  // Transform matrix from camera frame to world space.
+  // Transform matrix from camera frame to world space (i.e. the inverse of a
+  // GL_MODELVIEW matrix).
   float model_from_view[16] = {
     ux[0], uy[0], uz[0], uz[0] * l,
     ux[1], uy[1], uz[1], uz[1] * l,
@@ -404,7 +406,8 @@ void Demo::HandleReshapeEvent(int viewport_width, int viewport_height) {
   const float kTanFovY = tan(kFovY / 2.0);
   float aspect_ratio = static_cast<float>(viewport_width) / viewport_height;
 
-  // Transform matrix from clip space to camera space.
+  // Transform matrix from clip space to camera space (i.e. the inverse of a
+  // GL_PROJECTION matrix).
   float view_from_clip[16] = {
     kTanFovY * aspect_ratio, 0.0, 0.0, 0.0,
     0.0, kTanFovY, 0.0, 0.0,

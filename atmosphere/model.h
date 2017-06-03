@@ -49,6 +49,9 @@ functions (that you need to forward declare in your own shaders to be able to
 compile them separately):
 
 <pre class="prettyprint">
+// Returns the radiance of the Sun, outside the atmosphere.
+vec3 GetSolarRadiance();
+
 // Returns the sky radiance along the segment from 'camera' to the nearest
 // atmosphere boundary in direction 'view_ray', as well as the transmittance
 // along this segment.
@@ -64,6 +67,9 @@ vec3 GetSkyRadianceToPoint(vec3 camera, vec3 p, double shadow_length,
 // and whose normal vector is 'normal'.
 vec3 GetSunAndSkyIrradiance(vec3 p, vec3 normal, vec3 sun_direction,
     out vec3 sky_irradiance);
+
+// Returns the luminance of the Sun, outside the atmosphere.
+vec3 GetSolarLuminance();
 
 // Returns the sky luminance along the segment from 'camera' to the nearest
 // atmosphere boundary in direction 'view_ray', as well as the transmittance
@@ -99,7 +105,7 @@ shadow, measured in the unit passed to the constructor's
 
 <p>and where
 <ul>
-<li>the first 3 functions return spectral radiance and irradiance values
+<li>the first 4 functions return spectral radiance and irradiance values
 (in $W.m^{-2}.sr^{-1}.nm^{-1}$ and $W.m^{-2}.nm^{-1}$), at the 3 wavelengths
 <code>kLambdaR</code>, <code>kLambdaG</code>, <code>kLambdaB</code> (in this
 order),</li>

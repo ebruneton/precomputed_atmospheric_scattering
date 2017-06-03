@@ -105,7 +105,7 @@ simply renders a full screen quad, and outputs the view ray direction in model
 space:
 */
 
-const char* kVertexShader = R"(
+const char kVertexShader[] = R"(
     #version 330
     uniform mat3 model_from_clip;
     layout(location = 0) in vec4 vertex;
@@ -122,7 +122,7 @@ tone mapping function to convert it to a final color. This shader takes as input
 some uniforms describing the camera and the scene:
 */
 
-const char* kFragmentShader = R"(
+const char kFragmentShader[] = R"(
     #define OUT(x) out x
     uniform vec3 camera_;
     uniform float exposure_;
@@ -176,7 +176,7 @@ disk with the following function, which is a simple wrapper around the
 
 typedef std::unique_ptr<unsigned int[]> Image;
 
-const char* kOutputDir = "output/Doc/atmosphere/reference/";
+const char kOutputDir[] = "output/Doc/atmosphere/reference/";
 constexpr unsigned int kWidth = 640;
 constexpr unsigned int kHeight = 360;
 
@@ -426,7 +426,8 @@ provide the following method:
 */
 
   void SetViewParameters(Angle sun_theta, Angle sun_phi, bool use_luminance) {
-    // Transform matrix from camera frame to world space.
+    // Transform matrix from camera frame to world space (i.e. the inverse of a
+    // GL_MODELVIEW matrix).
     const float kCameraPos[3] = { 2000.0, -8000.0, 500.0 };
     constexpr float kPitch = PI / 30.0;
     const float model_from_view[16] = {
@@ -436,7 +437,8 @@ provide the following method:
       0.0, 0.0, 0.0, 1.0
     };
 
-    // Transform matrix from clip space to camera space.
+    // Transform matrix from clip space to camera space (i.e. the inverse of a
+    // GL_PROJECTION matrix).
     constexpr float kFovY = 50.0 / 180.0 * PI;
     const float kTanFovY = std::tan(kFovY / 2.0);
     const float view_from_clip[16] = {
@@ -491,7 +493,8 @@ method:
 
   void InitShader() {
     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, &kVertexShader, NULL);
+    const char* const vertex_shader_source = kVertexShader;
+    glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
     glCompileShader(vertex_shader);
 
     const std::string fragment_shader_str =
