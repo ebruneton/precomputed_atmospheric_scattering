@@ -173,7 +173,7 @@ constexpr double kSunAngularRadius = 0.00935 / 2.0;
 constexpr double kSunSolidAngle = kPi * kSunAngularRadius * kSunAngularRadius;
 constexpr double kLengthUnitInMeters = 1000.0;
 
-const char* kVertexShader = R"(
+const char kVertexShader[] = R"(
     #version 330
     uniform mat4 model_from_view;
     uniform mat4 view_from_clip;
@@ -203,7 +203,7 @@ Demo::Demo(int viewport_width, int viewport_height) :
     use_ozone_(true),
     use_combined_textures_(true),
     use_half_precision_(true),
-    use_luminance_(false),
+    use_luminance_(NONE),
     do_white_balance_(false),
     show_help_(true),
     program_(0),
@@ -346,7 +346,8 @@ void Demo::InitModel() {
       kBottomRadius, kTopRadius, {rayleigh_layer}, rayleigh_scattering,
       {mie_layer}, mie_scattering, mie_extinction, kMiePhaseFunctionG,
       ozone_density, absorption_extinction, ground_albedo, max_sun_zenith_angle,
-      kLengthUnitInMeters, use_combined_textures_, use_half_precision_));
+      kLengthUnitInMeters, use_luminance_ == PRECOMPUTED ? 15 : 3,
+      use_combined_textures_, use_half_precision_));
   model_-&gt;Init();
 </pre>
 <p>Then, it creates and compiles the vertex and fragment shaders used to render
@@ -354,12 +355,13 @@ our demo scene, and link them with the <code>Model</code>'s atmosphere shader
 to get the final scene rendering program:
 <pre class="prettyprint">
   GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vertex_shader, 1, &kVertexShader, NULL);
+  const char* const vertex_shader_source = kVertexShader;
+  glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
   glCompileShader(vertex_shader);
 
   const std::string fragment_shader_str =
       "#version 330\n" +
-      std::string(use_luminance_ ? "#define USE_LUMINANCE\n" : "") +
+      std::string(use_luminance_ != NONE ? "#define USE_LUMINANCE\n" : "") +
       demo_glsl;
   const char* fragment_shader_source = fragment_shader_str.c_str();
   GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -424,7 +426,8 @@ void Demo::HandleRedisplayEvent() const {
   float uz[3] = { sin_z * cos_a, sin_z * sin_a, cos_z };
   float l = view_distance_meters_ / kLengthUnitInMeters;
 
-  // Transform matrix from camera frame to world space.
+  // Transform matrix from camera frame to world space (i.e. the inverse of a
+  // GL_MODELVIEW matrix).
   float model_from_view[16] = {
     ux[0], uy[0], uz[0], uz[0] * l,
     ux[1], uy[1], uz[1], uz[1] * l,
@@ -437,7 +440,7 @@ void Demo::HandleRedisplayEvent() const {
       model_from_view[7],
       model_from_view[11]);
   glUniform1f(glGetUniformLocation(program_, "exposure"),
-      use_luminance_ ? exposure_ * 1e-5 : exposure_);
+      use_luminance_ != NONE ? exposure_ * 1e-5 : exposure_);
   glUniformMatrix4fv(glGetUniformLocation(program_, "model_from_view"),
       1, true, model_from_view);
   glUniform3f(glGetUniformLocation(program_, "sun_direction"),
@@ -466,7 +469,8 @@ void Demo::HandleRedisplayEvent() const {
          &lt;&lt; " p: half precision (currently: "
          &lt;&lt; (use_half_precision_ ? "on" : "off") &lt;&lt; ")\n"
          &lt;&lt; " l: use luminance (currently: "
-         &lt;&lt; (use_luminance_ ? "on" : "off") &lt;&lt; ")\n"
+         &lt;&lt; (use_luminance_ == PRECOMPUTED ? "precomputed" :
+             (use_luminance_ == APPROXIMATE ? "approximate" : "off")) &lt;&lt; ")\n"
          &lt;&lt; " w: white balance (currently: "
          &lt;&lt; (do_white_balance_ ? "on" : "off") &lt;&lt; ")\n"
          &lt;&lt; " +/-: increase/decrease exposure (" &lt;&lt; exposure_ &lt;&lt; ")\n"
@@ -493,7 +497,8 @@ void Demo::HandleReshapeEvent(int viewport_width, int viewport_height) {
   const float kTanFovY = tan(kFovY / 2.0);
   float aspect_ratio = static_cast&lt;float&gt;(viewport_width) / viewport_height;
 
-  // Transform matrix from clip space to camera space.
+  // Transform matrix from clip space to camera space (i.e. the inverse of a
+  // GL_PROJECTION matrix).
   float view_from_clip[16] = {
     kTanFovY * aspect_ratio, 0.0, 0.0, 0.0,
     0.0, kTanFovY, 0.0, 0.0,
@@ -518,7 +523,11 @@ void Demo::HandleKeyboardEvent(unsigned char key) {
   } else if (key == 'p') {
     use_half_precision_ = !use_half_precision_;
   } else if (key == 'l') {
-    use_luminance_ = !use_luminance_;
+    switch (use_luminance_) {
+      case NONE: use_luminance_ = APPROXIMATE; break;
+      case APPROXIMATE: use_luminance_ = PRECOMPUTED; break;
+      case PRECOMPUTED: use_luminance_ = NONE; break;
+    }
   } else if (key == 'w') {
     do_white_balance_ = !do_white_balance_;
   } else if (key == '+') {
