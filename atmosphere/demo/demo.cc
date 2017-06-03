@@ -102,7 +102,7 @@ Demo::Demo(int viewport_width, int viewport_height) :
     use_ozone_(true),
     use_combined_textures_(true),
     use_half_precision_(true),
-    use_luminance_(false),
+    use_luminance_(NONE),
     do_white_balance_(false),
     show_help_(true),
     program_(0),
@@ -249,7 +249,8 @@ void Demo::InitModel() {
       kBottomRadius, kTopRadius, {rayleigh_layer}, rayleigh_scattering,
       {mie_layer}, mie_scattering, mie_extinction, kMiePhaseFunctionG,
       ozone_density, absorption_extinction, ground_albedo, max_sun_zenith_angle,
-      kLengthUnitInMeters, use_combined_textures_, use_half_precision_));
+      kLengthUnitInMeters, use_luminance_ == PRECOMPUTED ? 15 : 3,
+      use_combined_textures_, use_half_precision_));
   model_->Init();
 
 /*
@@ -265,7 +266,7 @@ to get the final scene rendering program:
 
   const std::string fragment_shader_str =
       "#version 330\n" +
-      std::string(use_luminance_ ? "#define USE_LUMINANCE\n" : "") +
+      std::string(use_luminance_ != NONE ? "#define USE_LUMINANCE\n" : "") +
       demo_glsl;
   const char* fragment_shader_source = fragment_shader_str.c_str();
   GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -348,7 +349,7 @@ void Demo::HandleRedisplayEvent() const {
       model_from_view[7],
       model_from_view[11]);
   glUniform1f(glGetUniformLocation(program_, "exposure"),
-      use_luminance_ ? exposure_ * 1e-5 : exposure_);
+      use_luminance_ != NONE ? exposure_ * 1e-5 : exposure_);
   glUniformMatrix4fv(glGetUniformLocation(program_, "model_from_view"),
       1, true, model_from_view);
   glUniform3f(glGetUniformLocation(program_, "sun_direction"),
@@ -377,7 +378,8 @@ void Demo::HandleRedisplayEvent() const {
          << " p: half precision (currently: "
          << (use_half_precision_ ? "on" : "off") << ")\n"
          << " l: use luminance (currently: "
-         << (use_luminance_ ? "on" : "off") << ")\n"
+         << (use_luminance_ == PRECOMPUTED ? "precomputed" :
+             (use_luminance_ == APPROXIMATE ? "approximate" : "off")) << ")\n"
          << " w: white balance (currently: "
          << (do_white_balance_ ? "on" : "off") << ")\n"
          << " +/-: increase/decrease exposure (" << exposure_ << ")\n"
@@ -432,7 +434,11 @@ void Demo::HandleKeyboardEvent(unsigned char key) {
   } else if (key == 'p') {
     use_half_precision_ = !use_half_precision_;
   } else if (key == 'l') {
-    use_luminance_ = !use_luminance_;
+    switch (use_luminance_) {
+      case NONE: use_luminance_ = APPROXIMATE; break;
+      case APPROXIMATE: use_luminance_ = PRECOMPUTED; break;
+      case PRECOMPUTED: use_luminance_ = NONE; break;
+    }
   } else if (key == 'w') {
     do_white_balance_ = !do_white_balance_;
   } else if (key == '+') {

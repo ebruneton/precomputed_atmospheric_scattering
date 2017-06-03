@@ -60,12 +60,21 @@ implementation</a>:
   <li>partially implement the light shaft algorithm presented in the paper (it
     implements Eqs. 17 and 18, but not the shadow volume algorithm),
   </li>
-  <li>uses a configurable extra-terrestrial solar spectrum, and converts the
-    radiance values to RGB luminance values as described in <a
-    href="https://arxiv.org/pdf/1612.04336.pdf">A Qualitative and Quantitative
-    Evaluation of 8 Clear Sky Models</a>. This gives almost the same results as
-    with a full spectral rendering method, at a fraction of the cost (we check
-    this by comparing the GPU results against full spectral CPU renderings).
+  <li>uses a configurable extra-terrestrial solar spectrum, and either
+    <ul>
+      <li>converts the spectral radiance values to RGB luminance values as
+      described in <a href="https://arxiv.org/pdf/1612.04336.pdf">A Qualitative
+      and Quantitative Evaluation of 8 Clear Sky Models</a> (section 14.3),</li>
+      <li>or precomputes luminance values instead of spectral radiance values,
+      as described in <a href=
+      "http://www.oskee.wz.cz/stranka/uploads/SCCG10ElekKmoch.pdf">Real-time
+      Spectral Scattering in Large-scale Natural Participating Media</a>
+      (section 4.4). The precomputation phase is then slower than with the above
+      option, but uses the same amount of GPU memory.</li>
+    </ul>
+    This gives almost the same results as with a full spectral rendering method,
+    at a fraction of the cost (we check this by comparing the GPU results
+    against full spectral CPU renderings).
   </li>
 </ul>
 In addition, the new implementation adds support for the ozone layer, and for

@@ -117,12 +117,40 @@ along the specified segment at the 3 wavelengths <code>kLambdaR</code>,
 <code>kLambdaG</code>, <code>kLambdaB</code> (in this order).</li>
 </ul>
 
+<p><b>Note</b> The precomputed atmosphere textures can store either irradiance
+or illuminance values (see the <code>num_precomputed_wavelengths</code>
+parameter):
+<ul>
+  <li>when using irradiance values, the RGB channels of these textures contain
+  spectral irradiance values, in $W.m^{-2}.nm^{-1}$, at the 3 wavelengths
+  <code>kLambdaR</code>, <code>kLambdaG</code>, <code>kLambdaB</code> (in this
+  order). The API functions returning radiance values return these precomputed
+  values (times the phase functions), while the API functions returning
+  luminance values use the approximation described in
+  <a href="https://arxiv.org/pdf/1612.04336.pdf">A Qualitative and Quantitative
+  Evaluation of 8 Clear Sky Models</a>, section 14.3, to convert 3 radiance
+  values to linear sRGB luminance values.</li>
+  <li>when using illuminance values, the RGB channels of these textures contain
+  illuminance values, in $lx$, in linear sRGB space. These illuminance values
+  are precomputed as described in
+  <a href="http://www.oskee.wz.cz/stranka/uploads/SCCG10ElekKmoch.pdf">Real-time
+  Spectral Scattering in Large-scale Natural Participating Media</a>, section
+  4.4 (i.e. <code>num_precomputed_wavelengths</code> irradiance values are
+  precomputed, and then converted to sRGB via a numerical integration of this
+  spectrum with the CIE color matching functions). The API functions returning
+  luminance values return these precomputed values (times the phase functions),
+  while <i>the API functions returning radiance values are not provided</i>.
+  </li>
+</ul>
+
 <p>The concrete API definition is the following:
 */
 
 #ifndef ATMOSPHERE_MODEL_H_
 #define ATMOSPHERE_MODEL_H_
 
+#include <array>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -227,6 +255,20 @@ class Model {
     // The length unit used in your shaders and meshes. This is the length unit
     // which must be used when calling the atmosphere model shader functions.
     double length_unit_in_meters,
+    // The number of wavelengths for which atmospheric scattering must be
+    // precomputed (the temporary GPU memory used during precomputations, and
+    // the GPU memory used by the precomputed results, is independent of this
+    // number, but the <i>precomputation time is directly proportional to this
+    // number</i>):
+    // - if this number is less than or equal to 3, scattering is precomputed
+    // for 3 wavelengths, and stored as irradiance values. Then both the
+    // radiance-based and the luminance-based API functions are provided (see
+    // the above note).
+    // - otherwise, scattering is precomputed for this number of wavelengths
+    // (rounded up to a multiple of 3), integrated with the CIE color matching
+    // functions, and stored as illuminance values. Then only the
+    // luminance-based API functions are provided (see the above note).
+    unsigned int num_precomputed_wavelengths,
     // Whether to pack the (red component of the) single Mie scattering with the
     // Rayleigh and multiple scattering in a single texture, or to store the
     // (3 components of the) single Mie scattering in a separate texture.
@@ -264,8 +306,24 @@ class Model {
   static constexpr double kLambdaB = 440.0;
 
  private:
+  typedef std::array<double, 3> vec3;
+  typedef std::array<float, 9> mat3;
+
+  void Precompute(
+      unsigned int fbo,
+      unsigned int delta_irradiance_texture,
+      unsigned int delta_rayleigh_scattering_texture,
+      unsigned int delta_mie_scattering_texture,
+      unsigned int delta_scattering_density_texture,
+      unsigned int delta_multiple_scattering_texture,
+      const vec3& lambdas,
+      const mat3& luminance_from_radiance,
+      bool blend,
+      unsigned int num_scattering_orders);
+
+  unsigned int num_precomputed_wavelengths_;
   bool half_precision_;
-  std::string glsl_header_;
+  std::function<std::string(const vec3&)> glsl_header_factory_;
   unsigned int transmittance_texture_;
   unsigned int scattering_texture_;
   unsigned int optional_single_mie_scattering_texture_;

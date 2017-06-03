@@ -34,8 +34,8 @@ with reference images computed with the same code, but executed on CPU in full
 spectral mode and with double precision floats. The goal is to make sure that
 the approximations made in the GPU version (half precision floats, single Mie
 scattering extrapolated from a single wavelength, and luminance values computed
-from 3 wavelengths instead of 47 wavelengths on CPU) do not significantly reduce
-the image quality.
+from 3 or 15 wavelengths instead of 47 wavelengths on CPU) do not significantly
+reduce the image quality.
 
 <p>The code is organized as follows:
 <ul>
@@ -360,7 +360,7 @@ size and radiance, surface albedos):
 provide a separate method to initialize it:
 */
 
-  void InitGpuModel(bool combine_textures) {
+  void InitGpuModel(bool combine_textures, bool precomputed_luminance) {
     if (!glutGet(GLUT_INIT_STATE)) {
       int argc = 0;
       char** argv = nullptr;
@@ -401,6 +401,7 @@ provide a separate method to initialize it:
         atmosphere_parameters_.ground_albedo.to(Number::Unit()),
         acos(atmosphere_parameters_.mu_s_min()),
         kLengthUnit.to(m),
+        precomputed_luminance ? 15 : 3 /* num_computed_wavelengths */,
         combine_textures,
         true /* half_precision */));
     model_->Init();
@@ -779,7 +780,8 @@ CPU). As a consequence, we expect the two images to be nearly identical:
     const std::string kCaption = "Left: GPU model, combine_textures = false. "
         "Right: CPU model. Both images show the spectral radiance at 3 "
         "predefined wavelengths (i.e. no conversion to sRGB via CIE XYZ).";
-    InitGpuModel(false /* combine_textures */);
+    InitGpuModel(false /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(65.0 * deg, 90.0 * deg, false /* use_luminance */);
     ExpectLess(
@@ -798,7 +800,8 @@ previous test case:
     const std::string kCaption = "Left: GPU model, combine_textures = true. "
         "Right: CPU model. Both images show the spectral radiance at 3 "
         "predefined wavelengths (i.e. no conversion to sRGB via CIE XYZ).";
-    InitGpuModel(true /* combine_textures */);
+    InitGpuModel(true /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(65.0 * deg, 90.0 * deg, false /* use_luminance */);
     ExpectLess(
@@ -816,7 +819,8 @@ previous test, so we expect a larger difference between the GPU and CPU results
     const std::string kCaption = "Left: GPU model, combine_textures = true. "
         "Right: CPU model. Both images show the spectral radiance at 3 "
         "predefined wavelengths (i.e. no conversion to sRGB via CIE XYZ).";
-    InitGpuModel(true /* combine_textures */);
+    InitGpuModel(true /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(88.0 * deg, 90.0 * deg, false /* use_luminance */);
     ExpectLess(
@@ -842,7 +846,8 @@ approximations:
         "GPU).";
     sphere_albedo_ = DimensionlessSpectrum(0.8);
     ground_albedo_ = DimensionlessSpectrum(0.1);
-    InitGpuModel(false /* combine_textures */);
+    InitGpuModel(false /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(65.0 * deg, 90.0 * deg, true /* use_luminance */);
     ExpectLess(
@@ -864,7 +869,8 @@ compared to the previous test case:
         "GPU).";
     sphere_albedo_ = DimensionlessSpectrum(0.8);
     ground_albedo_ = DimensionlessSpectrum(0.1);
-    InitGpuModel(true /* combine_textures */);
+    InitGpuModel(true /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(65.0 * deg, 90.0 * deg, true /* use_luminance */);
     ExpectLess(
@@ -885,7 +891,8 @@ previous test, so we expect a larger difference between the GPU and CPU results
         "GPU).";
     sphere_albedo_ = DimensionlessSpectrum(0.8);
     ground_albedo_ = DimensionlessSpectrum(0.1);
-    InitGpuModel(true /* combine_textures */);
+    InitGpuModel(true /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(88.0 * deg, 90.0 * deg, true /* use_luminance */);
     ExpectLess(
@@ -907,7 +914,8 @@ spectral way, and to convert to XYZ and then to sRGB only at the very end).
         "Right: CPU model. Both images show the sRGB luminance (radiance "
         "converted to CIE XYZ and then to sRGB - with some approximations on "
         "GPU).";
-    InitGpuModel(true /* combine_textures */);
+    InitGpuModel(true /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(65.0 * deg, 90.0 * deg, true /* use_luminance */);
     ExpectLess(
@@ -915,7 +923,7 @@ spectral way, and to convert to XYZ and then to sRGB only at the very end).
   }
 
 /*
-<p>The last test case compares the sRGB luminance computations, done on GPU
+<p>The following test case compares the sRGB luminance computations, done on GPU
 vs CPU, in a "worst case" situation: combined textures on GPU and a sunset scene
 (leading to large differences in the single Mie component), and wavelength
 dependent albedo values (see the previous test case):
@@ -926,11 +934,126 @@ dependent albedo values (see the previous test case):
         "Right: CPU model. Both images show the sRGB luminance (radiance "
         "converted to CIE XYZ and then to sRGB - with some approximations on "
         "GPU).";
-    InitGpuModel(true /* combine_textures */);
+    InitGpuModel(true /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(88.0 * deg, 90.0 * deg, true /* use_luminance */);
     ExpectLess(
         35.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+  }
+
+/*
+<p>The following test case compares the sRGB luminance computations, done on GPU
+vs CPU. The GPU computations use precomputed luminance from 15 wavelenths, while
+the CPU computations use a "full spectral" rendering method (using the value of
+the spectral radiance at 47 wavelengths between 360 and 830 nm). To evaluate the
+effect of these approximations alone, we don't use the combine_textures option
+on GPU (which introduces additional approximations). Similarly, we use constant
+albedos instead of wavelength dependent albedos to avoid additional
+approximations:
+*/
+
+  void TestPrecomputedLuminanceSeparateTexturesConstantAlbedo() {
+    const std::string kCaption = "Left: GPU model, combine_textures = false. "
+        "Right: CPU model. Both images show the sRGB luminance (radiance "
+        "converted to CIE XYZ and then to sRGB - using 15 wavelengths on GPU, "
+        "vs 47 on CPU).";
+    sphere_albedo_ = DimensionlessSpectrum(0.8);
+    ground_albedo_ = DimensionlessSpectrum(0.1);
+    InitGpuModel(false /* combine_textures */,
+        true /* precomputed_luminance */);
+    InitCpuModel();
+    SetViewParameters(65.0 * deg, 90.0 * deg, true /* use_luminance */);
+    ExpectLess(
+        43.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+  }
+
+/*
+<p>The following test case is almost the same as the previous one, except that
+we use the the combine_textures option in the GPU model. This leads to some
+additional approximations on the GPU side, not present in the CPU model. As a
+consequence, we expect a slightly larger difference between the two images,
+compared to the previous test case:
+*/
+
+  void TestPrecomputedLuminanceCombineTexturesConstantAlbedo() {
+    const std::string kCaption = "Left: GPU model, combine_textures = true. "
+        "Right: CPU model. Both images show the sRGB luminance (radiance "
+        "converted to CIE XYZ and then to sRGB - using 15 wavelengths on GPU, "
+        "vs 47 on CPU).";
+    sphere_albedo_ = DimensionlessSpectrum(0.8);
+    ground_albedo_ = DimensionlessSpectrum(0.1);
+    InitGpuModel(true /* combine_textures */,
+        true /* precomputed_luminance */);
+    InitCpuModel();
+    SetViewParameters(65.0 * deg, 90.0 * deg, true /* use_luminance */);
+    ExpectLess(
+        43.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+  }
+
+/*
+<p>The following test case is the same as the previous one, for a sunset scene.
+In this case the single Mie scattering contribution is larger than in the
+previous test, so we expect a larger difference between the GPU and CPU results
+(due to the GPU approximations for the single Mie scattering term):
+*/
+
+  void TestPrecomputedLuminanceCombineTexturesConstantAlbedoSunSet() {
+    const std::string kCaption = "Left: GPU model, combine_textures = true. "
+        "Right: CPU model. Both images show the sRGB luminance (radiance "
+        "converted to CIE XYZ and then to sRGB - using 15 wavelengths on GPU, "
+        "vs 47 on CPU).";
+    sphere_albedo_ = DimensionlessSpectrum(0.8);
+    ground_albedo_ = DimensionlessSpectrum(0.1);
+    InitGpuModel(true /* combine_textures */,
+        true /* precomputed_luminance */);
+    InitCpuModel();
+    SetViewParameters(88.0 * deg, 90.0 * deg, true /* use_luminance */);
+    ExpectLess(
+        40.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+  }
+
+/*
+<p>The following test case compares the sRGB luminance computations, done on GPU
+vs CPU, with wavelength dependent albedo values. This leads, on the GPU side, to
+new approximations compared to the CPU reference model (indeed, on GPU we
+multiply the sun and sky sRGB values by the albedo, sampled at 3 wavelengths -
+while the correct method, used on CPU, is to perform all the computations,
+including the albedo multiplication, in a full spectral way, and to convert to
+XYZ and then to sRGB only at the very end).
+*/
+
+  void TestPrecomputedLuminanceCombineTexturesSpectralAlbedo() {
+    const std::string kCaption = "Left: GPU model, combine_textures = true. "
+        "Right: CPU model. Both images show the sRGB luminance (radiance "
+        "converted to CIE XYZ and then to sRGB - using 15 wavelengths on GPU, "
+        "vs 47 on CPU).";
+    InitGpuModel(true /* combine_textures */,
+        true /* precomputed_luminance */);
+    InitCpuModel();
+    SetViewParameters(65.0 * deg, 90.0 * deg, true /* use_luminance */);
+    ExpectLess(
+        39.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+  }
+
+/*
+<p>The last test case compares the sRGB luminance computations, done on GPU
+vs CPU, in a "worst case" situation: combined textures on GPU and a sunset scene
+(leading to large differences in the single Mie component), and wavelength
+dependent albedo values (see the previous test case):
+*/
+
+  void TestPrecomputedLuminanceCombineTexturesSpectralAlbedoSunSet() {
+    const std::string kCaption = "Left: GPU model, combine_textures = true. "
+        "Right: CPU model. Both images show the sRGB luminance (radiance "
+        "converted to CIE XYZ and then to sRGB - using 15 wavelengths on GPU, "
+        "vs 47 on CPU).";
+    InitGpuModel(true /* combine_textures */,
+        true /* precomputed_luminance */);
+    InitCpuModel();
+    SetViewParameters(88.0 * deg, 90.0 * deg, true /* use_luminance */);
+    ExpectLess(
+        40.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
   }
 
 /*
@@ -983,6 +1106,21 @@ ModelTest luminance4(
 ModelTest luminance5(
     "LuminanceCombineTexturesSpectralAlbedoSunSet",
     &ModelTest::TestLuminanceCombineTexturesSpectralAlbedoSunSet);
+ModelTest precomputed_luminance1(
+    "PrecomputedLuminanceSeparateTexturesConstantAlbedo",
+    &ModelTest::TestPrecomputedLuminanceSeparateTexturesConstantAlbedo);
+ModelTest precomputed_luminance2(
+    "PrecomputedLuminanceCombineTexturesConstantAlbedo",
+    &ModelTest::TestPrecomputedLuminanceCombineTexturesConstantAlbedo);
+ModelTest precomputed_luminance3(
+    "PrecomputedLuminanceCombineTexturesConstantAlbedoSunSet",
+    &ModelTest::TestPrecomputedLuminanceCombineTexturesConstantAlbedoSunSet);
+ModelTest precomputed_luminance4(
+    "PrecomputedLuminanceCombineTexturesSpectralAlbedo",
+    &ModelTest::TestPrecomputedLuminanceCombineTexturesSpectralAlbedo);
+ModelTest precomputed_luminance5(
+    "PrecomputedLuminanceCombineTexturesSpectralAlbedoSunSet",
+    &ModelTest::TestPrecomputedLuminanceCombineTexturesSpectralAlbedoSunSet);
 
 }  // anonymous namespace
 
