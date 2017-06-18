@@ -240,7 +240,8 @@ struct DensityProfile {
 struct AtmosphereParameters {
   // The solar irradiance at the top of the atmosphere.
   IrradianceSpectrum solar_irradiance;
-  // The sun's angular radius.
+  // The sun's angular radius. Warning: the implementation uses approximations
+  // that are valid only if this angle is smaller than 0.1 radians.
   Angle sun_angular_radius;
   // The distance between the planet center and the bottom of the atmosphere.
   Length bottom_radius;
