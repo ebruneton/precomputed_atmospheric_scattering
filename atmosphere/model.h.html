@@ -295,7 +295,8 @@ class Model {
     // The solar irradiance at the top of the atmosphere, in W/m^2/nm. This
     // vector must have the same size as the wavelengths parameter.
     const std::vector&lt;double&gt;& solar_irradiance,
-    // The sun's angular radius, in radians.
+    // The sun's angular radius, in radians. Warning: the implementation uses
+    // approximations that are valid only if this value is smaller than 0.1.
     double sun_angular_radius,
     // The distance between the planet center and the bottom of the atmosphere,
     // in m.
