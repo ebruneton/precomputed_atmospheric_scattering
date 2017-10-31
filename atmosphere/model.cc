@@ -430,12 +430,12 @@ GLuint NewTexture2d(int width, int height) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
   // 16F precision for the transmittance gives artifacts.
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, width, height, 0,
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0,
       GL_RGB, GL_FLOAT, NULL);
   return texture;
 }
 
-GLuint NewTexture3d(int width, int height, int depth, GLenum format,
+GLuint NewTexture3d(int width, int height, int depth,
     bool half_precision) {
   GLuint texture;
   glGenTextures(1, &texture);
@@ -447,11 +447,9 @@ GLuint NewTexture3d(int width, int height, int depth, GLenum format,
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-  GLenum internal_format = format == GL_RGBA ?
-      (half_precision ? GL_RGBA16F : GL_RGBA32F) :
-      (half_precision ? GL_RGB16F : GL_RGB32F);
+  GLenum internal_format = half_precision ? GL_RGBA16F : GL_RGBA32F;
   glTexImage3D(GL_TEXTURE_3D, 0, internal_format, width, height, depth, 0,
-      format, GL_FLOAT, NULL);
+      GL_RGBA, GL_FLOAT, NULL);
   return texture;
 }
 
@@ -723,7 +721,6 @@ Model::Model(
       SCATTERING_TEXTURE_WIDTH,
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
-      combine_scattering_textures ? GL_RGBA : GL_RGB,
       half_precision);
   if (combine_scattering_textures) {
     optional_single_mie_scattering_texture_ = 0;
@@ -732,7 +729,6 @@ Model::Model(
         SCATTERING_TEXTURE_WIDTH,
         SCATTERING_TEXTURE_HEIGHT,
         SCATTERING_TEXTURE_DEPTH,
-        GL_RGB,
         half_precision);
   }
   irradiance_texture_ = NewTexture2d(
@@ -848,19 +844,16 @@ void Model::Init(unsigned int num_scattering_orders) {
       SCATTERING_TEXTURE_WIDTH,
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
-      GL_RGB,
       half_precision_);
   GLuint delta_mie_scattering_texture = NewTexture3d(
       SCATTERING_TEXTURE_WIDTH,
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
-      GL_RGB,
       half_precision_);
   GLuint delta_scattering_density_texture = NewTexture3d(
       SCATTERING_TEXTURE_WIDTH,
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
-      GL_RGB,
       half_precision_);
   // delta_multiple_scattering_texture is only needed to compute scattering
   // order 3 or more, while delta_rayleigh_scattering_texture and
