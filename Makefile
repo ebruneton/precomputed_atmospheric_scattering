@@ -33,7 +33,7 @@ INCLUDE_FLAGS := \
 DEBUG_FLAGS := -g
 RELEASE_FLAGS := -DNDEBUG -O3 -fexpensive-optimizations
 
-DIRS := atmosphere tools
+DIRS := atmosphere tools text
 HEADERS := $(shell find $(DIRS) -name "*.h")
 SOURCES := $(shell find $(DIRS) -name "*.cc")
 GLSL_SOURCES := $(shell find $(DIRS) -name "*.glsl")
@@ -95,6 +95,7 @@ output/Release/atmosphere_integration_test: \
 	$(GPP) $^ -pthread -lGLEW -lglut -lGL -o $@
 
 output/Debug/atmosphere_demo: \
+    output/Debug/text/TextRenderer.o \
     output/Debug/atmosphere/demo/demo.o \
     output/Debug/atmosphere/demo/demo_main.o \
     output/Debug/atmosphere/model.o

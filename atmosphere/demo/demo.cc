@@ -154,6 +154,8 @@ Demo::Demo(int viewport_width, int viewport_height) :
   glBindVertexArray(0);
 
   InitModel();
+
+  text_renderer_.reset(new TextRenderer);
 }
 
 /*
@@ -382,7 +384,7 @@ void Demo::HandleRedisplayEvent() const {
 
   if (show_help_) {
     std::stringstream help;
-    help << "\nMouse:\n"
+    help << "Mouse:\n"
          << " drag, CTRL+drag, wheel: view and sun directions\n"
          << "Keys:\n"
          << " h: help\n"
@@ -400,12 +402,8 @@ void Demo::HandleRedisplayEvent() const {
          << (do_white_balance_ ? "on" : "off") << ")\n"
          << " +/-: increase/decrease exposure (" << exposure_ << ")\n"
          << " 1-9: predefined views\n";
-    glUseProgram(0);
-    glColor3f(1.0, 0.0, 0.0);
-    glRasterPos2f(-0.99, 1.0);
-    glutBitmapString(GLUT_BITMAP_9_BY_15,
-        (const unsigned char*) help.str().c_str());
-    glUseProgram(program_);
+    text_renderer_->setColor(1.0, 0.0, 0.0);
+    text_renderer_->drawText(help.str().c_str(), 5, 4);
   }
 
   glutSwapBuffers();

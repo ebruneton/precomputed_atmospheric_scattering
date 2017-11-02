@@ -44,6 +44,7 @@ atmosphere model and to the GLSL program used to render the scene:
 #include <memory>
 
 #include "atmosphere/model.h"
+#include "text/TextRenderer.h"
 
 namespace atmosphere {
 namespace demo {
@@ -104,6 +105,8 @@ class Demo {
   int previous_mouse_x_;
   int previous_mouse_y_;
   bool is_ctrl_key_pressed_;
+
+  std::unique_ptr<TextRenderer> text_renderer_;
 };
 
 }  // namespace demo
