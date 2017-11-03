@@ -149,6 +149,7 @@ parameter):
 #ifndef ATMOSPHERE_MODEL_H_
 #define ATMOSPHERE_MODEL_H_
 
+#include <GL/glew.h>
 #include <array>
 #include <functional>
 #include <string>
@@ -322,6 +323,8 @@ class Model {
       bool blend,
       unsigned int num_scattering_orders);
 
+  GLuint vao_;
+  GLuint vbo_;
   unsigned int num_precomputed_wavelengths_;
   bool half_precision_;
   std::function<std::string(const vec3&)> glsl_header_factory_;
