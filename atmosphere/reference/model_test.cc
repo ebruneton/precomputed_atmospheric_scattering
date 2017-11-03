@@ -566,12 +566,32 @@ with the GPU program, and then read back the framebuffer pixels.
     InitShader();
 
     glViewport(0, 0, kWidth, kHeight);
-    glBegin(GL_TRIANGLE_STRIP);
-    glVertex4f(-1.0, -1.0, 0.0, 1.0);
-    glVertex4f(+1.0, -1.0, 0.0, 1.0);
-    glVertex4f(-1.0, +1.0, 0.0, 1.0);
-    glVertex4f(+1.0, +1.0, 0.0, 1.0);
-    glEnd();
+    {
+        GLuint vao;
+        glGenVertexArrays(1, &vao);
+        glBindVertexArray(vao);
+        GLuint vbo;
+        glGenBuffers(1, &vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        const GLfloat vertices[] = {
+            -1.0, -1.0, 0.0, 1.0,
+            +1.0, -1.0, 0.0, 1.0,
+            -1.0, +1.0, 0.0, 1.0,
+            +1.0, +1.0, 0.0, 1.0,
+        };
+        constexpr int coordsPerVertex = 4;
+        glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices,
+                     GL_STATIC_DRAW);
+        constexpr GLuint attribIndex = 0;
+        glVertexAttribPointer(attribIndex, coordsPerVertex, GL_FLOAT,
+                              false, 0, 0);
+        glEnableVertexAttribArray(attribIndex);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glDeleteBuffers(1, &vbo);
+        glBindVertexArray(0);
+        glDeleteVertexArrays(1, &vao);
+    }
     glutSwapBuffers();
 
     std::unique_ptr<unsigned char[]> gl_pixels(
