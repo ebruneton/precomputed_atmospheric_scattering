@@ -136,6 +136,23 @@ Demo::Demo(int viewport_width, int viewport_height) :
     INSTANCES[glutGetWindow()]->HandleMouseWheelEvent(dir);
   });
 
+  glGenVertexArrays(1, &vao_);
+  glBindVertexArray(vao_);
+  glGenBuffers(1, &vbo_);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+  const GLfloat vertices[]= {
+      -1.0, -1.0, 0.0, 1.0,
+      +1.0, -1.0, 0.0, 1.0,
+      -1.0, +1.0, 0.0, 1.0,
+      +1.0, +1.0, 0.0, 1.0,
+  };
+  constexpr int coordsPerVertex = 4;
+  glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
+  constexpr GLuint attribIndex = 0;
+  glVertexAttribPointer(attribIndex, coordsPerVertex, GL_FLOAT, false, 0, 0);
+  glEnableVertexAttribArray(attribIndex);
+  glBindVertexArray(0);
+
   InitModel();
 }
 
@@ -145,6 +162,8 @@ Demo::Demo(int viewport_width, int viewport_height) :
 
 Demo::~Demo() {
   glDeleteProgram(program_);
+  glDeleteBuffers(1, &vbo_);
+  glDeleteVertexArrays(1, &vao_);
   INSTANCES.erase(window_id_);
 }
 
@@ -357,12 +376,9 @@ void Demo::HandleRedisplayEvent() const {
       sin(sun_azimuth_angle_radians_) * sin(sun_zenith_angle_radians_),
       cos(sun_zenith_angle_radians_));
 
-  glBegin(GL_TRIANGLE_STRIP);
-  glVertex4f(-1.0, -1.0, 0.0, 1.0);
-  glVertex4f(+1.0, -1.0, 0.0, 1.0);
-  glVertex4f(-1.0, +1.0, 0.0, 1.0);
-  glVertex4f(+1.0, +1.0, 0.0, 1.0);
-  glEnd();
+  glBindVertexArray(vao_);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  glBindVertexArray(0);
 
   if (show_help_) {
     std::stringstream help;

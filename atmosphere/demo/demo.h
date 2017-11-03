@@ -39,6 +39,8 @@ atmosphere model and to the GLSL program used to render the scene:
 #ifndef ATMOSPHERE_DEMO_DEMO_H_
 #define ATMOSPHERE_DEMO_DEMO_H_
 
+#include <GL/glew.h>
+
 #include <memory>
 
 #include "atmosphere/model.h"
@@ -87,6 +89,8 @@ class Demo {
   bool show_help_;
 
   std::unique_ptr<Model> model_;
+  GLuint vao_;
+  GLuint vbo_;
   unsigned int program_;
   int window_id_;
 
