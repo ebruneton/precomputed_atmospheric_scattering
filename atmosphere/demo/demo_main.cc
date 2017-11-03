@@ -35,7 +35,7 @@ application.
 
 #include "atmosphere/demo/demo.h"
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 #include <GL/freeglut.h>
 
 #include <memory>

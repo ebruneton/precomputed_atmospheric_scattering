@@ -39,7 +39,7 @@ atmosphere model and to the GLSL program used to render the scene:
 #ifndef ATMOSPHERE_DEMO_DEMO_H_
 #define ATMOSPHERE_DEMO_DEMO_H_
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 
 #include <memory>
 

@@ -30,7 +30,7 @@
 #ifndef TEXT_TEXTRENDERER_H_
 #define TEXT_TEXTRENDERER_H_
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 
 class TextRenderer {
     GLuint fontTexture;

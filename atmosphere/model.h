@@ -149,7 +149,7 @@ parameter):
 #ifndef ATMOSPHERE_MODEL_H_
 #define ATMOSPHERE_MODEL_H_
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 #include <array>
 #include <functional>
 #include <string>

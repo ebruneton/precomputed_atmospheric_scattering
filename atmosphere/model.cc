@@ -43,7 +43,7 @@ of the following C++ code.
 
 #include "atmosphere/model.h"
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 
 #include <cassert>
 #include <cmath>

@@ -61,7 +61,7 @@ model definitions:
 
 #include "atmosphere/reference/model.h"
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 #include <GL/freeglut.h>
 
 #include <array>
@@ -369,7 +369,10 @@ provide a separate method to initialize it:
       glutInitWindowSize(kWidth, kHeight);
       glutCreateWindow("ModelTest");
       glutHideWindow();
-      glewInit();
+      if (!gladLoadGL())
+          throw std::runtime_error("GLAD initialization failed");
+      if (!GLAD_GL_VERSION_3_3)
+          throw std::runtime_error("OpenGL 3.3 or higher is required");
     }
 
     std::vector<double> wavelengths;

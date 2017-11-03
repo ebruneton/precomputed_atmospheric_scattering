@@ -39,7 +39,7 @@ independent of our atmosphere model. The only part which is related to it is the
 
 #include "atmosphere/demo/demo.h"
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 #include <GL/freeglut.h>
 
 #include <algorithm>
@@ -48,6 +48,7 @@ independent of our atmosphere model. The only part which is related to it is the
 #include <sstream>
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 namespace atmosphere {
 namespace demo {
@@ -115,7 +116,10 @@ Demo::Demo(int viewport_width, int viewport_height) :
   glutInitWindowSize(viewport_width, viewport_height);
   window_id_ = glutCreateWindow("Atmosphere Demo");
   INSTANCES[window_id_] = this;
-  glewInit();
+  if (!gladLoadGL())
+      throw std::runtime_error("GLAD initialization failed");
+  if (!GLAD_GL_VERSION_3_3)
+      throw std::runtime_error("OpenGL 3.3 or higher is required");
 
   glutDisplayFunc([]() {
     INSTANCES[glutGetWindow()]->HandleRedisplayEvent();
