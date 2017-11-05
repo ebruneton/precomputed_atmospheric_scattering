@@ -745,10 +745,10 @@ Model::Model(
   glCompileShader(atmosphere_shader_);
 
   // Create the VAO for full-screen quad drawing
-  glGenVertexArrays(1, &vao_);
-  glBindVertexArray(vao_);
-  glGenBuffers(1, &vbo_);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+  glGenVertexArrays(1, &full_screen_quad_vao_);
+  glBindVertexArray(full_screen_quad_vao_);
+  glGenBuffers(1, &full_screen_quad_vbo_);
+  glBindBuffer(GL_ARRAY_BUFFER, full_screen_quad_vbo_);
   const GLfloat vertices[] = {
       -1.0, -1.0,
       +1.0, -1.0,
@@ -768,8 +768,8 @@ Model::Model(
 */
 
 Model::~Model() {
-  glDeleteBuffers(1, &vbo_);
-  glDeleteVertexArrays(1, &vao_);
+  glDeleteBuffers(1, &full_screen_quad_vbo_);
+  glDeleteVertexArrays(1, &full_screen_quad_vao_);
   glDeleteTextures(1, &transmittance_texture_);
   glDeleteTextures(1, &scattering_texture_);
   if (optional_single_mie_scattering_texture_ != 0) {
@@ -926,7 +926,7 @@ void Model::Init(unsigned int num_scattering_orders) {
     glDrawBuffer(GL_COLOR_ATTACHMENT0);
     glViewport(0, 0, TRANSMITTANCE_TEXTURE_WIDTH, TRANSMITTANCE_TEXTURE_HEIGHT);
     compute_transmittance.Use();
-    DrawQuad({}, vao_);
+    DrawQuad({}, full_screen_quad_vao_);
   }
 
   // Delete the temporary resources allocated at the begining of this method.
@@ -1054,7 +1054,7 @@ void Model::Precompute(
   glDrawBuffer(GL_COLOR_ATTACHMENT0);
   glViewport(0, 0, TRANSMITTANCE_TEXTURE_WIDTH, TRANSMITTANCE_TEXTURE_HEIGHT);
   compute_transmittance.Use();
-  DrawQuad({}, vao_);
+  DrawQuad({}, full_screen_quad_vao_);
 
   // Compute the direct irradiance, store it in delta_irradiance_texture and,
   // depending on 'blend', either initialize irradiance_texture_ with zeros or
@@ -1069,7 +1069,7 @@ void Model::Precompute(
   compute_direct_irradiance.Use();
   compute_direct_irradiance.BindTexture2d(
       "transmittance_texture", transmittance_texture_, 0);
-  DrawQuad({false, blend}, vao_);
+  DrawQuad({false, blend}, full_screen_quad_vao_);
 
   // Compute the rayleigh and mie single scattering, store them in
   // delta_rayleigh_scattering_texture and delta_mie_scattering_texture, and
@@ -1096,7 +1096,7 @@ void Model::Precompute(
       "transmittance_texture", transmittance_texture_, 0);
   for (unsigned int layer = 0; layer < SCATTERING_TEXTURE_DEPTH; ++layer) {
     compute_single_scattering.BindInt("layer", layer);
-    DrawQuad({false, false, blend, blend}, vao_);
+    DrawQuad({false, false, blend, blend}, full_screen_quad_vao_);
   }
 
   // Compute the 2nd, 3rd and 4th order of scattering, in sequence.
@@ -1128,7 +1128,7 @@ void Model::Precompute(
     compute_scattering_density.BindInt("scattering_order", scattering_order);
     for (unsigned int layer = 0; layer < SCATTERING_TEXTURE_DEPTH; ++layer) {
       compute_scattering_density.BindInt("layer", layer);
-      DrawQuad({}, vao_);
+      DrawQuad({}, full_screen_quad_vao_);
     }
 
     // Compute the indirect irradiance, store it in delta_irradiance_texture and
@@ -1152,7 +1152,7 @@ void Model::Precompute(
         "multiple_scattering_texture", delta_multiple_scattering_texture, 2);
     compute_indirect_irradiance.BindInt("scattering_order",
         scattering_order - 1);
-    DrawQuad({false, true}, vao_);
+    DrawQuad({false, true}, full_screen_quad_vao_);
 
     // Compute the multiple scattering, store it in
     // delta_multiple_scattering_texture, and accumulate it in
@@ -1172,7 +1172,7 @@ void Model::Precompute(
         "scattering_density_texture", delta_scattering_density_texture, 1);
     for (unsigned int layer = 0; layer < SCATTERING_TEXTURE_DEPTH; ++layer) {
       compute_multiple_scattering.BindInt("layer", layer);
-      DrawQuad({false, true}, vao_);
+      DrawQuad({false, true}, full_screen_quad_vao_);
     }
   }
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, 0, 0);
