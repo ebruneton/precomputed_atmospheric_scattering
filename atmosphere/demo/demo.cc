@@ -140,10 +140,10 @@ Demo::Demo(int viewport_width, int viewport_height) :
     INSTANCES[glutGetWindow()]->HandleMouseWheelEvent(dir);
   });
 
-  glGenVertexArrays(1, &vao_);
-  glBindVertexArray(vao_);
-  glGenBuffers(1, &vbo_);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+  glGenVertexArrays(1, &full_screen_quad_vao_);
+  glBindVertexArray(full_screen_quad_vao_);
+  glGenBuffers(1, &full_screen_quad_vbo_);
+  glBindBuffer(GL_ARRAY_BUFFER, full_screen_quad_vbo_);
   const GLfloat vertices[]= {
       -1.0, -1.0, 0.0, 1.0,
       +1.0, -1.0, 0.0, 1.0,
@@ -168,8 +168,8 @@ Demo::Demo(int viewport_width, int viewport_height) :
 
 Demo::~Demo() {
   glDeleteProgram(program_);
-  glDeleteBuffers(1, &vbo_);
-  glDeleteVertexArrays(1, &vao_);
+  glDeleteBuffers(1, &full_screen_quad_vbo_);
+  glDeleteVertexArrays(1, &full_screen_quad_vao_);
   INSTANCES.erase(window_id_);
 }
 
@@ -382,7 +382,7 @@ void Demo::HandleRedisplayEvent() const {
       sin(sun_azimuth_angle_radians_) * sin(sun_zenith_angle_radians_),
       cos(sun_zenith_angle_radians_));
 
-  glBindVertexArray(vao_);
+  glBindVertexArray(full_screen_quad_vao_);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   glBindVertexArray(0);
 

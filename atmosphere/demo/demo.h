@@ -90,8 +90,8 @@ class Demo {
   bool show_help_;
 
   std::unique_ptr<Model> model_;
-  GLuint vao_;
-  GLuint vbo_;
+  GLuint full_screen_quad_vao_;
+  GLuint full_screen_quad_vbo_;
   unsigned int program_;
   int window_id_;
 
