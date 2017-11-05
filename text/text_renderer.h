@@ -34,23 +34,23 @@
 
 class TextRenderer {
  public:
-    TextRenderer();
-    TextRenderer(TextRenderer const&) = delete;
-    TextRenderer(TextRenderer&&) = delete;
-    ~TextRenderer();
+  TextRenderer();
+  TextRenderer(TextRenderer const&) = delete;
+  TextRenderer(TextRenderer&&) = delete;
+  ~TextRenderer();
 
-    void setColor(float r, float g, float b);
-    void drawText(const char* text, int left, int top);
+  void setColor(float r, float g, float b);
+  void drawText(const char* text, int left, int top);
  private:
-    GLuint fontTexture_;
-    GLuint vao_, vbo_;
-    GLuint program_;
-    GLfloat color_[3];
+  GLuint fontTexture_;
+  GLuint vao_, vbo_;
+  GLuint program_;
+  GLfloat color_[3];
 
-    void setupTexture();
-    void setupBuffers();
-    void setupProgram();
-    void drawChar(char c, int x, int y, int viewportWidth, int viewportHeight);
+  void setupTexture();
+  void setupBuffers();
+  void setupProgram();
+  void drawChar(char c, int x, int y, int viewportWidth, int viewportHeight);
 };
 
 #endif  // TEXT_TEXT_RENDERER_H_
