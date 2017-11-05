@@ -322,6 +322,7 @@ class Model {
       const mat3& luminance_from_radiance,
       bool blend,
       unsigned int num_scattering_orders);
+  void CheckFramebufferFormatsSupport();
 
   GLuint full_screen_quad_vao_;
   GLuint full_screen_quad_vbo_;
@@ -333,6 +334,8 @@ class Model {
   unsigned int optional_single_mie_scattering_texture_;
   unsigned int irradiance_texture_;
   unsigned int atmosphere_shader_;
+  GLenum rgb16f_supported_ = true;
+  GLenum rgb32f_supported_ = true;
 };
 
 }  // namespace atmosphere

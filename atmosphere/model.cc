@@ -436,7 +436,7 @@ GLuint NewTexture2d(int width, int height) {
 }
 
 GLuint NewTexture3d(int width, int height, int depth, GLenum format,
-    bool half_precision) {
+    bool half_precision, bool rgb16f_supported, bool rgb32f_supported) {
   GLuint texture;
   glGenTextures(1, &texture);
   glActiveTexture(GL_TEXTURE0);
@@ -450,6 +450,12 @@ GLuint NewTexture3d(int width, int height, int depth, GLenum format,
   GLenum internal_format = format == GL_RGBA ?
       (half_precision ? GL_RGBA16F : GL_RGBA32F) :
       (half_precision ? GL_RGB16F : GL_RGB32F);
+  if (!rgb32f_supported && internal_format == GL_RGB32F) {
+      internal_format = GL_RGBA32F;
+  }
+  if (!rgb16f_supported && internal_format == GL_RGB16F) {
+      internal_format = GL_RGBA16F;
+  }
   glTexImage3D(GL_TEXTURE_3D, 0, internal_format, width, height, depth, 0,
       format, GL_FLOAT, NULL);
   return texture;
@@ -606,6 +612,7 @@ Model::Model(
     bool half_precision) :
         num_precomputed_wavelengths_(num_precomputed_wavelengths),
         half_precision_(half_precision) {
+  CheckFramebufferFormatsSupport();
   auto to_string = [&wavelengths](const std::vector<double>& v,
       const vec3& lambdas, double scale) {
     double r = Interpolate(wavelengths, v, lambdas[0]) * scale;
@@ -724,7 +731,8 @@ Model::Model(
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
       combine_scattering_textures ? GL_RGBA : GL_RGB,
-      half_precision);
+      half_precision,
+      rgb16f_supported_, rgb32f_supported_);
   if (combine_scattering_textures) {
     optional_single_mie_scattering_texture_ = 0;
   } else {
@@ -733,7 +741,8 @@ Model::Model(
         SCATTERING_TEXTURE_HEIGHT,
         SCATTERING_TEXTURE_DEPTH,
         GL_RGB,
-        half_precision);
+        half_precision,
+        rgb16f_supported_, rgb32f_supported_);
   }
   irradiance_texture_ = NewTexture2d(
       IRRADIANCE_TEXTURE_WIDTH, IRRADIANCE_TEXTURE_HEIGHT);
@@ -849,19 +858,22 @@ void Model::Init(unsigned int num_scattering_orders) {
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
       GL_RGB,
-      half_precision_);
+      half_precision_,
+      rgb16f_supported_, rgb32f_supported_);
   GLuint delta_mie_scattering_texture = NewTexture3d(
       SCATTERING_TEXTURE_WIDTH,
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
       GL_RGB,
-      half_precision_);
+      half_precision_,
+      rgb16f_supported_, rgb32f_supported_);
   GLuint delta_scattering_density_texture = NewTexture3d(
       SCATTERING_TEXTURE_WIDTH,
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
       GL_RGB,
-      half_precision_);
+      half_precision_,
+      rgb16f_supported_, rgb32f_supported_);
   // delta_multiple_scattering_texture is only needed to compute scattering
   // order 3 or more, while delta_rayleigh_scattering_texture and
   // delta_mie_scattering_texture are only needed to compute double scattering.
@@ -1185,6 +1197,34 @@ void Model::Precompute(
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, 0, 0);
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, 0, 0);
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, 0, 0);
+}
+
+void Model::CheckFramebufferFormatsSupport() {
+  GLuint test_fbo = 0;
+  glGenFramebuffers(1, &test_fbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, test_fbo);
+  GLuint test_texture = 0;
+  glGenTextures(1, &test_texture);
+  glBindTexture(GL_TEXTURE_2D, test_texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  assert(glGetError() == GL_NO_ERROR);
+
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, 1, 1, 0, GL_RGB, GL_FLOAT, NULL);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                         GL_TEXTURE_2D, test_texture, 0);
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+    rgb32f_supported_ = false;
+  }
+
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, 1, 1, 0, GL_RGB, GL_FLOAT, NULL);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                         GL_TEXTURE_2D, test_texture, 0);
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+    rgb16f_supported_ = false;
+  }
+
+  glDeleteTextures(1, &test_texture);
+  glDeleteFramebuffers(1, &test_fbo);
 }
 
 }  // namespace atmosphere
