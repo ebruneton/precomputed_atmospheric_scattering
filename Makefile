@@ -87,7 +87,7 @@ output/Debug/atmosphere_test: \
 	$(GPP) $^ -o $@
 
 output/Release/atmosphere_integration_test: \
-    output/Debug/glad/src/glad.o \
+    output/Release/glad/src/glad.o \
     output/Release/atmosphere/model.o \
     output/Release/atmosphere/reference/functions.o \
     output/Release/atmosphere/reference/model.o \
