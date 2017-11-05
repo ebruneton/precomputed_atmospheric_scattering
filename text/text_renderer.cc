@@ -31,7 +31,7 @@
 
 #include "font.inc"
 
-void TextRenderer::setupTexture() {
+void TextRenderer::SetupTexture() {
   glGenTextures(1, &fontTexture_);
 
   // Avoid interfering with caller's assumptions
@@ -48,7 +48,7 @@ void TextRenderer::setupTexture() {
   glBindTexture(GL_TEXTURE_2D, oldTexture);
 }
 
-void TextRenderer::setupBuffers() {
+void TextRenderer::SetupBuffers() {
   glGenVertexArrays(1, &vao_);
   glBindVertexArray(vao_);
   glGenBuffers(1, &vbo_);
@@ -68,7 +68,7 @@ void TextRenderer::setupBuffers() {
   glBindVertexArray(0);
 }
 
-void TextRenderer::setupProgram() {
+void TextRenderer::SetupProgram() {
   const auto vertexShader = glCreateShader(GL_VERTEX_SHADER);
   const char*const kVertexShaderSrc = R"(#version 330
 uniform mat4 mvp;
@@ -107,7 +107,7 @@ void main()
   glDeleteShader(vertexShader);
 }
 
-void TextRenderer::drawChar(char c, int x, int y,
+void TextRenderer::DrawChar(char c, int x, int y,
                             int viewportWidth, int viewportHeight) {
   if (c < 0x20 || c > 0x7e) c = '?';
   glBindVertexArray(vao_);
@@ -147,11 +147,11 @@ void TextRenderer::drawChar(char c, int x, int y,
 }
 
 TextRenderer::TextRenderer() {
-  setupTexture();
-  setupBuffers();
-  setupProgram();
+  SetupTexture();
+  SetupBuffers();
+  SetupProgram();
 
-  setColor(1, 1, 1);
+  SetColor(1, 1, 1);
 }
 
 TextRenderer::~TextRenderer() {
@@ -161,7 +161,7 @@ TextRenderer::~TextRenderer() {
   glDeleteTextures(1, &fontTexture_);
 }
 
-void TextRenderer::setColor(float r, float g, float b) {
+void TextRenderer::SetColor(float r, float g, float b) {
   color_[0] = r;
   color_[1] = g;
   color_[2] = b;
@@ -172,7 +172,7 @@ void TextRenderer::setColor(float r, float g, float b) {
   glUseProgram(oldProgram);
 }
 
-void TextRenderer::drawText(const char* text, int left, int top) {
+void TextRenderer::DrawText(const char* text, int left, int top) {
   GLint viewport[4];
   glGetIntegerv(GL_VIEWPORT, viewport);
 
@@ -194,7 +194,7 @@ void TextRenderer::drawText(const char* text, int left, int top) {
       x = left;
       continue;
     default:
-      drawChar(c, x, y, viewport[2], viewport[3]);
+      DrawChar(c, x, y, viewport[2], viewport[3]);
       break;
     }
     x += font.charWidth;

@@ -406,8 +406,8 @@ void Demo::HandleRedisplayEvent() const {
          << (do_white_balance_ ? "on" : "off") << ")\n"
          << " +/-: increase/decrease exposure (" << exposure_ << ")\n"
          << " 1-9: predefined views\n";
-    text_renderer_->setColor(1.0, 0.0, 0.0);
-    text_renderer_->drawText(help.str().c_str(), 5, 4);
+    text_renderer_->SetColor(1.0, 0.0, 0.0);
+    text_renderer_->DrawText(help.str().c_str(), 5, 4);
   }
 
   glutSwapBuffers();
