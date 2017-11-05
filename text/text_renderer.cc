@@ -70,7 +70,7 @@ void TextRenderer::setupBuffers() {
 
 void TextRenderer::setupProgram() {
     const auto vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    const char*const vertexShaderSrc = R"(#version 330
+    const char*const kVertexShaderSrc = R"(#version 330
 uniform mat4 mvp;
 uniform vec2 texCoordIn;
 uniform vec2 charSizeInTexture;
@@ -82,10 +82,10 @@ void main()
     texCoord = texCoordIn+charSizeInTexture*(vec2(vertex.x, 1-vertex.y));
 }
 )";
-    glShaderSource(vertexShader, 1, &vertexShaderSrc, nullptr);
+    glShaderSource(vertexShader, 1, &kVertexShaderSrc, nullptr);
     glCompileShader(vertexShader);
     const auto fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    const char*const fragmentShaderSrc = R"(#version 330
+    const char*const kFragmentShaderSrc = R"(#version 330
 uniform vec3 textColor;
 uniform sampler2D font;
 in vec2 texCoord;
@@ -95,7 +95,7 @@ void main()
     color = vec4(textColor.rgb, 1)*texture(font, texCoord).rrrr;
 }
 )";
-    glShaderSource(fragmentShader, 1, &fragmentShaderSrc, nullptr);
+    glShaderSource(fragmentShader, 1, &kFragmentShaderSrc, nullptr);
     glCompileShader(fragmentShader);
     program_ = glCreateProgram();
     glAttachShader(program_, vertexShader);
