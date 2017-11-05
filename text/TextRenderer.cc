@@ -60,10 +60,11 @@ void TextRenderer::setupBuffers() {
         1, 1,
     };
     glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
-    constexpr GLuint attribIndex = 0;
-    constexpr int coordsPerVertex = 2;
-    glVertexAttribPointer(attribIndex, coordsPerVertex, GL_FLOAT, false, 0, 0);
-    glEnableVertexAttribArray(attribIndex);
+    constexpr GLuint kAttribIndex = 0;
+    constexpr int kCoordsPerVertex = 2;
+    glVertexAttribPointer(kAttribIndex, kCoordsPerVertex,
+                          GL_FLOAT, false, 0, 0);
+    glEnableVertexAttribArray(kAttribIndex);
     glBindVertexArray(0);
 }
 

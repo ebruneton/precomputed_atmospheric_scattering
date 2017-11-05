@@ -150,11 +150,11 @@ Demo::Demo(int viewport_width, int viewport_height) :
       -1.0, +1.0, 0.0, 1.0,
       +1.0, +1.0, 0.0, 1.0,
   };
-  constexpr int coordsPerVertex = 4;
+  constexpr int kCoordsPerVertex = 4;
   glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
-  constexpr GLuint attribIndex = 0;
-  glVertexAttribPointer(attribIndex, coordsPerVertex, GL_FLOAT, false, 0, 0);
-  glEnableVertexAttribArray(attribIndex);
+  constexpr GLuint kAttribIndex = 0;
+  glVertexAttribPointer(kAttribIndex, kCoordsPerVertex, GL_FLOAT, false, 0, 0);
+  glEnableVertexAttribArray(kAttribIndex);
   glBindVertexArray(0);
 
   InitModel();
