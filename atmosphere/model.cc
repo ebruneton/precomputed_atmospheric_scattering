@@ -430,7 +430,7 @@ GLuint NewTexture2d(int width, int height) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
   // 16F precision for the transmittance gives artifacts.
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, width, height, 0,
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0,
       GL_RGB, GL_FLOAT, NULL);
   return texture;
 }
