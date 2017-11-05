@@ -32,14 +32,14 @@
 #include "font.inc"
 
 void TextRenderer::setupTexture() {
-    glGenTextures(1, &fontTexture);
+    glGenTextures(1, &fontTexture_);
 
     // Avoid interfering with caller's assumptions
     glActiveTexture(GL_TEXTURE0);
     GLint oldTexture;
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &oldTexture);
 
-    glBindTexture(GL_TEXTURE_2D, fontTexture);
+    glBindTexture(GL_TEXTURE_2D, fontTexture_);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, font.atlasWidth, font.atlasHeight,
                  0, GL_RED, GL_UNSIGNED_BYTE, font.data.data());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -49,10 +49,10 @@ void TextRenderer::setupTexture() {
 }
 
 void TextRenderer::setupBuffers() {
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glGenVertexArrays(1, &vao_);
+    glBindVertexArray(vao_);
+    glGenBuffers(1, &vbo_);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     const GLfloat vertices[] = {
         0, 0,
         1, 0,
@@ -97,27 +97,27 @@ void main()
 )";
     glShaderSource(fragmentShader, 1, &fragmentShaderSrc, nullptr);
     glCompileShader(fragmentShader);
-    program = glCreateProgram();
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragmentShader);
-    glLinkProgram(program);
-    glDetachShader(program, fragmentShader);
+    program_ = glCreateProgram();
+    glAttachShader(program_, vertexShader);
+    glAttachShader(program_, fragmentShader);
+    glLinkProgram(program_);
+    glDetachShader(program_, fragmentShader);
     glDeleteShader(fragmentShader);
-    glDetachShader(program, vertexShader);
+    glDetachShader(program_, vertexShader);
     glDeleteShader(vertexShader);
 }
 
 void TextRenderer::drawChar(char c, int x, int y,
                             int viewportWidth, int viewportHeight) {
     if (c<0x20 || c>0x7e) c = '?';
-    glBindVertexArray(vao);
-    glUseProgram(program);
+    glBindVertexArray(vao_);
+    glUseProgram(program_);
 
     const GLfloat charW = font.charWidth, charH = font.charHeight;
-    glUniform2f(glGetUniformLocation(program, "charSizeInTexture"),
+    glUniform2f(glGetUniformLocation(program_, "charSizeInTexture"),
                 charW/font.atlasWidth,
                 charH/font.atlasHeight);
-    glUniform2f(glGetUniformLocation(program, "texCoordIn"),
+    glUniform2f(glGetUniformLocation(program_, "texCoordIn"),
                 (c&0xf)*charW/font.atlasWidth,
                 ((c>>4)-2)*charH/font.atlasHeight);
     {
@@ -129,12 +129,13 @@ void TextRenderer::drawChar(char c, int x, int y,
                                0,  sy, 0, 0,
                                0,  0,  1, 0,
                                dx, dy, 0, 1};
-        glUniformMatrix4fv(glGetUniformLocation(program, "mvp"), 1, false, mvp);
+        glUniformMatrix4fv(glGetUniformLocation(program_, "mvp"),
+                           1, false, mvp);
     }
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, fontTexture);
-    glUniform1i(glGetUniformLocation(program, "font"), 0);
+    glBindTexture(GL_TEXTURE_2D, fontTexture_);
+    glUniform1i(glGetUniformLocation(program_, "font"), 0);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -154,20 +155,20 @@ TextRenderer::TextRenderer() {
 }
 
 TextRenderer::~TextRenderer() {
-    glDeleteProgram(program);
-    glDeleteBuffers(1, &vbo);
-    glDeleteVertexArrays(1, &vao);
-    glDeleteTextures(1, &fontTexture);
+    glDeleteProgram(program_);
+    glDeleteBuffers(1, &vbo_);
+    glDeleteVertexArrays(1, &vao_);
+    glDeleteTextures(1, &fontTexture_);
 }
 
 void TextRenderer::setColor(float r, float g, float b) {
-    color[0] = r;
-    color[1] = g;
-    color[2] = b;
+    color_[0] = r;
+    color_[1] = g;
+    color_[2] = b;
     GLint oldProgram;
     glGetIntegerv(GL_CURRENT_PROGRAM, &oldProgram);
-    glUseProgram(program);
-    glUniform3fv(glGetUniformLocation(program, "textColor"), 1, color);
+    glUseProgram(program_);
+    glUniform3fv(glGetUniformLocation(program_, "textColor"), 1, color_);
     glUseProgram(oldProgram);
 }
 

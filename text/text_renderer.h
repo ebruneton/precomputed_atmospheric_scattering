@@ -42,10 +42,10 @@ class TextRenderer {
     void setColor(float r, float g, float b);
     void drawText(const char* text, int left, int top);
  private:
-    GLuint fontTexture;
-    GLuint vao, vbo;
-    GLuint program;
-    GLfloat color[3];
+    GLuint fontTexture_;
+    GLuint vao_, vbo_;
+    GLuint program_;
+    GLfloat color_[3];
 
     void setupTexture();
     void setupBuffers();
