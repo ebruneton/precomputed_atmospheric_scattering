@@ -144,7 +144,7 @@ Demo::Demo(int viewport_width, int viewport_height) :
   glBindVertexArray(full_screen_quad_vao_);
   glGenBuffers(1, &full_screen_quad_vbo_);
   glBindBuffer(GL_ARRAY_BUFFER, full_screen_quad_vbo_);
-  const GLfloat vertices[]= {
+  const GLfloat vertices[] = {
       -1.0, -1.0, 0.0, 1.0,
       +1.0, -1.0, 0.0, 1.0,
       -1.0, +1.0, 0.0, 1.0,
