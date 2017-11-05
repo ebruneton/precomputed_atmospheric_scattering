@@ -44,7 +44,7 @@ atmosphere model and to the GLSL program used to render the scene:
 #include <memory>
 
 #include "atmosphere/model.h"
-#include "text/TextRenderer.h"
+#include "text/text_renderer.h"
 
 namespace atmosphere {
 namespace demo {

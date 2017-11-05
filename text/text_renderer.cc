@@ -27,7 +27,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "text/TextRenderer.h"
+#include "text/text_renderer.h"
 
 #include "font.inc"
 

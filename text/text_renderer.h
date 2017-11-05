@@ -27,8 +27,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TEXT_TEXTRENDERER_H_
-#define TEXT_TEXTRENDERER_H_
+#ifndef TEXT_TEXT_RENDERER_H_
+#define TEXT_TEXT_RENDERER_H_
 
 #include <glad/glad.h>
 
@@ -52,4 +52,4 @@ class TextRenderer {
     void drawText(const char* text, int left, int top);
 };
 
-#endif  // TEXT_TEXTRENDERER_H_
+#endif  // TEXT_TEXT_RENDERER_H_

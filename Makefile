@@ -98,7 +98,7 @@ output/Release/atmosphere_integration_test: \
 
 output/Debug/atmosphere_demo: \
     output/Debug/external/glad/src/glad.o \
-    output/Debug/text/TextRenderer.o \
+    output/Debug/text/text_renderer.o \
     output/Debug/atmosphere/demo/demo.o \
     output/Debug/atmosphere/demo/demo_main.o \
     output/Debug/atmosphere/model.o
