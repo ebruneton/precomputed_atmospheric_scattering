@@ -109,22 +109,22 @@ void main()
 
 void TextRenderer::drawChar(char c, int x, int y,
                             int viewportWidth, int viewportHeight) {
-  if (c<0x20 || c>0x7e) c = '?';
+  if (c < 0x20 || c > 0x7e) c = '?';
   glBindVertexArray(vao_);
   glUseProgram(program_);
 
   const GLfloat charW = font.charWidth, charH = font.charHeight;
   glUniform2f(glGetUniformLocation(program_, "charSizeInTexture"),
-              charW/font.atlasWidth,
-              charH/font.atlasHeight);
+              charW / font.atlasWidth,
+              charH / font.atlasHeight);
   glUniform2f(glGetUniformLocation(program_, "texCoordIn"),
-              (c&0xf)*charW/font.atlasWidth,
-              ((c>>4)-2)*charH/font.atlasHeight);
+              (c & 0xf) * charW / font.atlasWidth,
+              ((c >> 4) - 2) * charH / font.atlasHeight);
   {
-    const GLfloat dx = 2.f*x/viewportWidth -1,
-                  dy = 2.f*y/viewportHeight-1;
-    const GLfloat sx = 2*charW/viewportWidth,
-                  sy = 2*charH/viewportHeight;
+    const GLfloat dx = 2.f * x / viewportWidth  - 1,
+                  dy = 2.f * y / viewportHeight - 1;
+    const GLfloat sx = 2 * charW / viewportWidth,
+                  sy = 2 * charH / viewportHeight;
     const GLfloat mvp[] = {sx, 0,  0, 0,
                            0,  sy, 0, 0,
                            0,  0,  1, 0,
@@ -183,14 +183,14 @@ void TextRenderer::drawText(const char* text, int left, int top) {
   GLint oldTexture;
   glGetIntegerv(GL_TEXTURE_BINDING_2D, &oldTexture);
 
-  int x = left, y = viewport[3]-top-font.charHeight;
+  int x = left, y = viewport[3] - top - font.charHeight;
   for (int i = 0; text[i] != 0; ++i) {
     const char c = text[i];
     switch (c) {
     case ' ':
       break;
     case '\n':
-      y -= font.charHeight+1;
+      y -= font.charHeight + 1;
       x = left;
       continue;
     default:
