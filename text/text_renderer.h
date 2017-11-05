@@ -33,6 +33,15 @@
 #include <glad/glad.h>
 
 class TextRenderer {
+ public:
+    TextRenderer();
+    TextRenderer(TextRenderer const&) = delete;
+    TextRenderer(TextRenderer&&) = delete;
+    ~TextRenderer();
+
+    void setColor(float r, float g, float b);
+    void drawText(const char* text, int left, int top);
+ private:
     GLuint fontTexture;
     GLuint vao, vbo;
     GLuint program;
@@ -42,14 +51,6 @@ class TextRenderer {
     void setupBuffers();
     void setupProgram();
     void drawChar(char c, int x, int y, int viewportWidth, int viewportHeight);
- public:
-    TextRenderer();
-    TextRenderer(TextRenderer const&) = delete;
-    TextRenderer(TextRenderer&&) = delete;
-    ~TextRenderer();
-
-    void setColor(float r, float g, float b);
-    void drawText(const char* text, int left, int top);
 };
 
 #endif  // TEXT_TEXT_RENDERER_H_
