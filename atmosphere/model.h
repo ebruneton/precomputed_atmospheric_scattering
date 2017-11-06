@@ -149,6 +149,7 @@ parameter):
 #ifndef ATMOSPHERE_MODEL_H_
 #define ATMOSPHERE_MODEL_H_
 
+#include <glad/glad.h>
 #include <array>
 #include <functional>
 #include <string>
@@ -321,7 +322,10 @@ class Model {
       const mat3& luminance_from_radiance,
       bool blend,
       unsigned int num_scattering_orders);
+  void CheckFramebufferFormatsSupport();
 
+  GLuint full_screen_quad_vao_;
+  GLuint full_screen_quad_vbo_;
   unsigned int num_precomputed_wavelengths_;
   bool half_precision_;
   std::function<std::string(const vec3&)> glsl_header_factory_;
@@ -330,6 +334,8 @@ class Model {
   unsigned int optional_single_mie_scattering_texture_;
   unsigned int irradiance_texture_;
   unsigned int atmosphere_shader_;
+  GLenum rgb16f_supported_ = true;
+  GLenum rgb32f_supported_ = true;
 };
 
 }  // namespace atmosphere

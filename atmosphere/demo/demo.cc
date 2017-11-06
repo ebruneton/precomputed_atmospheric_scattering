@@ -39,7 +39,7 @@ independent of our atmosphere model. The only part which is related to it is the
 
 #include "atmosphere/demo/demo.h"
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 #include <GL/freeglut.h>
 
 #include <algorithm>
@@ -48,6 +48,7 @@ independent of our atmosphere model. The only part which is related to it is the
 #include <sstream>
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 namespace atmosphere {
 namespace demo {
@@ -115,7 +116,10 @@ Demo::Demo(int viewport_width, int viewport_height) :
   glutInitWindowSize(viewport_width, viewport_height);
   window_id_ = glutCreateWindow("Atmosphere Demo");
   INSTANCES[window_id_] = this;
-  glewInit();
+  if (!gladLoadGL())
+      throw std::runtime_error("GLAD initialization failed");
+  if (!GLAD_GL_VERSION_3_3)
+      throw std::runtime_error("OpenGL 3.3 or higher is required");
 
   glutDisplayFunc([]() {
     INSTANCES[glutGetWindow()]->HandleRedisplayEvent();
@@ -136,7 +140,26 @@ Demo::Demo(int viewport_width, int viewport_height) :
     INSTANCES[glutGetWindow()]->HandleMouseWheelEvent(dir);
   });
 
+  glGenVertexArrays(1, &full_screen_quad_vao_);
+  glBindVertexArray(full_screen_quad_vao_);
+  glGenBuffers(1, &full_screen_quad_vbo_);
+  glBindBuffer(GL_ARRAY_BUFFER, full_screen_quad_vbo_);
+  const GLfloat vertices[] = {
+      -1.0, -1.0, 0.0, 1.0,
+      +1.0, -1.0, 0.0, 1.0,
+      -1.0, +1.0, 0.0, 1.0,
+      +1.0, +1.0, 0.0, 1.0,
+  };
+  constexpr int kCoordsPerVertex = 4;
+  glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
+  constexpr GLuint kAttribIndex = 0;
+  glVertexAttribPointer(kAttribIndex, kCoordsPerVertex, GL_FLOAT, false, 0, 0);
+  glEnableVertexAttribArray(kAttribIndex);
+  glBindVertexArray(0);
+
   InitModel();
+
+  text_renderer_.reset(new TextRenderer);
 }
 
 /*
@@ -145,6 +168,8 @@ Demo::Demo(int viewport_width, int viewport_height) :
 
 Demo::~Demo() {
   glDeleteProgram(program_);
+  glDeleteBuffers(1, &full_screen_quad_vbo_);
+  glDeleteVertexArrays(1, &full_screen_quad_vao_);
   INSTANCES.erase(window_id_);
 }
 
@@ -357,16 +382,13 @@ void Demo::HandleRedisplayEvent() const {
       sin(sun_azimuth_angle_radians_) * sin(sun_zenith_angle_radians_),
       cos(sun_zenith_angle_radians_));
 
-  glBegin(GL_TRIANGLE_STRIP);
-  glVertex4f(-1.0, -1.0, 0.0, 1.0);
-  glVertex4f(+1.0, -1.0, 0.0, 1.0);
-  glVertex4f(-1.0, +1.0, 0.0, 1.0);
-  glVertex4f(+1.0, +1.0, 0.0, 1.0);
-  glEnd();
+  glBindVertexArray(full_screen_quad_vao_);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  glBindVertexArray(0);
 
   if (show_help_) {
     std::stringstream help;
-    help << "\nMouse:\n"
+    help << "Mouse:\n"
          << " drag, CTRL+drag, wheel: view and sun directions\n"
          << "Keys:\n"
          << " h: help\n"
@@ -384,12 +406,8 @@ void Demo::HandleRedisplayEvent() const {
          << (do_white_balance_ ? "on" : "off") << ")\n"
          << " +/-: increase/decrease exposure (" << exposure_ << ")\n"
          << " 1-9: predefined views\n";
-    glUseProgram(0);
-    glColor3f(1.0, 0.0, 0.0);
-    glRasterPos2f(-0.99, 1.0);
-    glutBitmapString(GLUT_BITMAP_9_BY_15,
-        (const unsigned char*) help.str().c_str());
-    glUseProgram(program_);
+    text_renderer_->SetColor(1.0, 0.0, 0.0);
+    text_renderer_->DrawText(help.str().c_str(), 5, 4);
   }
 
   glutSwapBuffers();

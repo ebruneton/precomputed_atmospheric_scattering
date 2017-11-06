@@ -39,9 +39,12 @@ atmosphere model and to the GLSL program used to render the scene:
 #ifndef ATMOSPHERE_DEMO_DEMO_H_
 #define ATMOSPHERE_DEMO_DEMO_H_
 
+#include <glad/glad.h>
+
 #include <memory>
 
 #include "atmosphere/model.h"
+#include "text/text_renderer.h"
 
 namespace atmosphere {
 namespace demo {
@@ -87,6 +90,8 @@ class Demo {
   bool show_help_;
 
   std::unique_ptr<Model> model_;
+  GLuint full_screen_quad_vao_;
+  GLuint full_screen_quad_vbo_;
   unsigned int program_;
   int window_id_;
 
@@ -100,6 +105,8 @@ class Demo {
   int previous_mouse_x_;
   int previous_mouse_y_;
   bool is_ctrl_key_pressed_;
+
+  std::unique_ptr<TextRenderer> text_renderer_;
 };
 
 }  // namespace demo

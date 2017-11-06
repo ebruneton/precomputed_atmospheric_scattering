@@ -43,7 +43,7 @@ of the following C++ code.
 
 #include "atmosphere/model.h"
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 
 #include <cassert>
 #include <cmath>
@@ -87,18 +87,17 @@ want to write):
 
 const char kGeometryShader[] = R"(
     #version 330
-    #extension GL_EXT_geometry_shader4 : enable
     layout(triangles) in;
     layout(triangle_strip, max_vertices = 3) out;
     uniform int layer;
     void main() {
-      gl_Position = gl_PositionIn[0];
+      gl_Position = gl_in[0].gl_Position;
       gl_Layer = layer;
       EmitVertex();
-      gl_Position = gl_PositionIn[1];
+      gl_Position = gl_in[1].gl_Position;
       gl_Layer = layer;
       EmitVertex();
-      gl_Position = gl_PositionIn[2];
+      gl_Position = gl_in[2].gl_Position;
       gl_Layer = layer;
       EmitVertex();
       EndPrimitive();
@@ -431,13 +430,13 @@ GLuint NewTexture2d(int width, int height) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
   // 16F precision for the transmittance gives artifacts.
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, width, height, 0,
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0,
       GL_RGB, GL_FLOAT, NULL);
   return texture;
 }
 
 GLuint NewTexture3d(int width, int height, int depth, GLenum format,
-    bool half_precision) {
+    bool half_precision, bool rgb16f_supported, bool rgb32f_supported) {
   GLuint texture;
   glGenTextures(1, &texture);
   glActiveTexture(GL_TEXTURE0);
@@ -451,6 +450,12 @@ GLuint NewTexture3d(int width, int height, int depth, GLenum format,
   GLenum internal_format = format == GL_RGBA ?
       (half_precision ? GL_RGBA16F : GL_RGBA32F) :
       (half_precision ? GL_RGB16F : GL_RGB32F);
+  if (!rgb32f_supported && internal_format == GL_RGB32F) {
+      internal_format = GL_RGBA32F;
+  }
+  if (!rgb16f_supported && internal_format == GL_RGB16F) {
+      internal_format = GL_RGBA16F;
+  }
   glTexImage3D(GL_TEXTURE_3D, 0, internal_format, width, height, depth, 0,
       format, GL_FLOAT, NULL);
   return texture;
@@ -461,18 +466,17 @@ GLuint NewTexture3d(int width, int height, int depth, GLenum format,
 blending separately enabled or disabled for each color attachment):
 */
 
-void DrawQuad(const std::vector<bool>& enable_blend) {
+void DrawQuad(const std::vector<bool>& enable_blend, GLuint quad_vao) {
   for (unsigned int i = 0; i < enable_blend.size(); ++i) {
     if (enable_blend[i]) {
       glEnablei(GL_BLEND, i);
     }
   }
-  glBegin(GL_TRIANGLE_STRIP);
-  glVertex2f(-1.0, -1.0);
-  glVertex2f(+1.0, -1.0);
-  glVertex2f(-1.0, +1.0);
-  glVertex2f(+1.0, +1.0);
-  glEnd();
+
+  glBindVertexArray(quad_vao);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  glBindVertexArray(0);
+
   for (unsigned int i = 0; i < enable_blend.size(); ++i) {
     glDisablei(GL_BLEND, i);
   }
@@ -608,6 +612,7 @@ Model::Model(
     bool half_precision) :
         num_precomputed_wavelengths_(num_precomputed_wavelengths),
         half_precision_(half_precision) {
+  CheckFramebufferFormatsSupport();
   auto to_string = [&wavelengths](const std::vector<double>& v,
       const vec3& lambdas, double scale) {
     double r = Interpolate(wavelengths, v, lambdas[0]) * scale;
@@ -726,7 +731,8 @@ Model::Model(
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
       combine_scattering_textures ? GL_RGBA : GL_RGB,
-      half_precision);
+      half_precision,
+      rgb16f_supported_, rgb32f_supported_);
   if (combine_scattering_textures) {
     optional_single_mie_scattering_texture_ = 0;
   } else {
@@ -735,7 +741,8 @@ Model::Model(
         SCATTERING_TEXTURE_HEIGHT,
         SCATTERING_TEXTURE_DEPTH,
         GL_RGB,
-        half_precision);
+        half_precision,
+        rgb16f_supported_, rgb32f_supported_);
   }
   irradiance_texture_ = NewTexture2d(
       IRRADIANCE_TEXTURE_WIDTH, IRRADIANCE_TEXTURE_HEIGHT);
@@ -749,6 +756,24 @@ Model::Model(
   atmosphere_shader_ = glCreateShader(GL_FRAGMENT_SHADER);
   glShaderSource(atmosphere_shader_, 1, &source, NULL);
   glCompileShader(atmosphere_shader_);
+
+  // Create the VAO for full-screen quad drawing
+  glGenVertexArrays(1, &full_screen_quad_vao_);
+  glBindVertexArray(full_screen_quad_vao_);
+  glGenBuffers(1, &full_screen_quad_vbo_);
+  glBindBuffer(GL_ARRAY_BUFFER, full_screen_quad_vbo_);
+  const GLfloat vertices[] = {
+      -1.0, -1.0,
+      +1.0, -1.0,
+      -1.0, +1.0,
+      +1.0, +1.0,
+  };
+  constexpr int kCoordsPerVertex = 2;
+  glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
+  constexpr GLuint kAttribIndex = 0;
+  glVertexAttribPointer(kAttribIndex, kCoordsPerVertex, GL_FLOAT, false, 0, 0);
+  glEnableVertexAttribArray(kAttribIndex);
+  glBindVertexArray(0);
 }
 
 /*
@@ -756,6 +781,8 @@ Model::Model(
 */
 
 Model::~Model() {
+  glDeleteBuffers(1, &full_screen_quad_vbo_);
+  glDeleteVertexArrays(1, &full_screen_quad_vao_);
   glDeleteTextures(1, &transmittance_texture_);
   glDeleteTextures(1, &scattering_texture_);
   if (optional_single_mie_scattering_texture_ != 0) {
@@ -831,19 +858,22 @@ void Model::Init(unsigned int num_scattering_orders) {
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
       GL_RGB,
-      half_precision_);
+      half_precision_,
+      rgb16f_supported_, rgb32f_supported_);
   GLuint delta_mie_scattering_texture = NewTexture3d(
       SCATTERING_TEXTURE_WIDTH,
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
       GL_RGB,
-      half_precision_);
+      half_precision_,
+      rgb16f_supported_, rgb32f_supported_);
   GLuint delta_scattering_density_texture = NewTexture3d(
       SCATTERING_TEXTURE_WIDTH,
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
       GL_RGB,
-      half_precision_);
+      half_precision_,
+      rgb16f_supported_, rgb32f_supported_);
   // delta_multiple_scattering_texture is only needed to compute scattering
   // order 3 or more, while delta_rayleigh_scattering_texture and
   // delta_mie_scattering_texture are only needed to compute double scattering.
@@ -915,7 +945,7 @@ void Model::Init(unsigned int num_scattering_orders) {
     glDrawBuffer(GL_COLOR_ATTACHMENT0);
     glViewport(0, 0, TRANSMITTANCE_TEXTURE_WIDTH, TRANSMITTANCE_TEXTURE_HEIGHT);
     compute_transmittance.Use();
-    DrawQuad({});
+    DrawQuad({}, full_screen_quad_vao_);
   }
 
   // Delete the temporary resources allocated at the begining of this method.
@@ -1043,7 +1073,7 @@ void Model::Precompute(
   glDrawBuffer(GL_COLOR_ATTACHMENT0);
   glViewport(0, 0, TRANSMITTANCE_TEXTURE_WIDTH, TRANSMITTANCE_TEXTURE_HEIGHT);
   compute_transmittance.Use();
-  DrawQuad({});
+  DrawQuad({}, full_screen_quad_vao_);
 
   // Compute the direct irradiance, store it in delta_irradiance_texture and,
   // depending on 'blend', either initialize irradiance_texture_ with zeros or
@@ -1058,7 +1088,7 @@ void Model::Precompute(
   compute_direct_irradiance.Use();
   compute_direct_irradiance.BindTexture2d(
       "transmittance_texture", transmittance_texture_, 0);
-  DrawQuad({false, blend});
+  DrawQuad({false, blend}, full_screen_quad_vao_);
 
   // Compute the rayleigh and mie single scattering, store them in
   // delta_rayleigh_scattering_texture and delta_mie_scattering_texture, and
@@ -1085,7 +1115,7 @@ void Model::Precompute(
       "transmittance_texture", transmittance_texture_, 0);
   for (unsigned int layer = 0; layer < SCATTERING_TEXTURE_DEPTH; ++layer) {
     compute_single_scattering.BindInt("layer", layer);
-    DrawQuad({false, false, blend, blend});
+    DrawQuad({false, false, blend, blend}, full_screen_quad_vao_);
   }
 
   // Compute the 2nd, 3rd and 4th order of scattering, in sequence.
@@ -1117,7 +1147,7 @@ void Model::Precompute(
     compute_scattering_density.BindInt("scattering_order", scattering_order);
     for (unsigned int layer = 0; layer < SCATTERING_TEXTURE_DEPTH; ++layer) {
       compute_scattering_density.BindInt("layer", layer);
-      DrawQuad({});
+      DrawQuad({}, full_screen_quad_vao_);
     }
 
     // Compute the indirect irradiance, store it in delta_irradiance_texture and
@@ -1141,7 +1171,7 @@ void Model::Precompute(
         "multiple_scattering_texture", delta_multiple_scattering_texture, 2);
     compute_indirect_irradiance.BindInt("scattering_order",
         scattering_order - 1);
-    DrawQuad({false, true});
+    DrawQuad({false, true}, full_screen_quad_vao_);
 
     // Compute the multiple scattering, store it in
     // delta_multiple_scattering_texture, and accumulate it in
@@ -1161,12 +1191,40 @@ void Model::Precompute(
         "scattering_density_texture", delta_scattering_density_texture, 1);
     for (unsigned int layer = 0; layer < SCATTERING_TEXTURE_DEPTH; ++layer) {
       compute_multiple_scattering.BindInt("layer", layer);
-      DrawQuad({false, true});
+      DrawQuad({false, true}, full_screen_quad_vao_);
     }
   }
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, 0, 0);
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, 0, 0);
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, 0, 0);
+}
+
+void Model::CheckFramebufferFormatsSupport() {
+  GLuint test_fbo = 0;
+  glGenFramebuffers(1, &test_fbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, test_fbo);
+  GLuint test_texture = 0;
+  glGenTextures(1, &test_texture);
+  glBindTexture(GL_TEXTURE_2D, test_texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  assert(glGetError() == GL_NO_ERROR);
+
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, 1, 1, 0, GL_RGB, GL_FLOAT, NULL);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                         GL_TEXTURE_2D, test_texture, 0);
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+    rgb32f_supported_ = false;
+  }
+
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, 1, 1, 0, GL_RGB, GL_FLOAT, NULL);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                         GL_TEXTURE_2D, test_texture, 0);
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+    rgb16f_supported_ = false;
+  }
+
+  glDeleteTextures(1, &test_texture);
+  glDeleteFramebuffers(1, &test_fbo);
 }
 
 }  // namespace atmosphere
