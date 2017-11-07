@@ -371,10 +371,12 @@ provide a separate method to initialize it:
       glutInitWindowSize(kWidth, kHeight);
       glutCreateWindow("ModelTest");
       glutHideWindow();
-      if (!gladLoadGL())
-          throw std::runtime_error("GLAD initialization failed");
-      if (!GLAD_GL_VERSION_3_3)
-          throw std::runtime_error("OpenGL 3.3 or higher is required");
+      if (!gladLoadGL()) {
+        throw std::runtime_error("GLAD initialization failed");
+      }
+      if (!GLAD_GL_VERSION_3_3) {
+        throw std::runtime_error("OpenGL 3.3 or higher is required");
+      }
     }
 
     std::vector<double> wavelengths;
@@ -572,30 +574,29 @@ with the GPU program, and then read back the framebuffer pixels.
 
     glViewport(0, 0, kWidth, kHeight);
     {
-        GLuint full_screen_quad_vao;
-        glGenVertexArrays(1, &full_screen_quad_vao);
-        glBindVertexArray(full_screen_quad_vao);
-        GLuint full_screen_quad_vbo;
-        glGenBuffers(1, &full_screen_quad_vbo);
-        glBindBuffer(GL_ARRAY_BUFFER, full_screen_quad_vbo);
-        const GLfloat vertices[] = {
-            -1.0, -1.0, 0.0, 1.0,
-            +1.0, -1.0, 0.0, 1.0,
-            -1.0, +1.0, 0.0, 1.0,
-            +1.0, +1.0, 0.0, 1.0,
-        };
-        constexpr int kCoordsPerVertex = 4;
-        glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices,
-                     GL_STATIC_DRAW);
-        constexpr GLuint kAttribIndex = 0;
-        glVertexAttribPointer(kAttribIndex, kCoordsPerVertex, GL_FLOAT,
-                              false, 0, 0);
-        glEnableVertexAttribArray(kAttribIndex);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glDeleteBuffers(1, &full_screen_quad_vbo);
-        glBindVertexArray(0);
-        glDeleteVertexArrays(1, &full_screen_quad_vao);
+      GLuint full_screen_quad_vao;
+      glGenVertexArrays(1, &full_screen_quad_vao);
+      glBindVertexArray(full_screen_quad_vao);
+      GLuint full_screen_quad_vbo;
+      glGenBuffers(1, &full_screen_quad_vbo);
+      glBindBuffer(GL_ARRAY_BUFFER, full_screen_quad_vbo);
+      const GLfloat vertices[] = {
+        -1.0, -1.0, 0.0, 1.0,
+        +1.0, -1.0, 0.0, 1.0,
+        -1.0, +1.0, 0.0, 1.0,
+        +1.0, +1.0, 0.0, 1.0,
+      };
+      glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
+      constexpr GLuint kAttribIndex = 0;
+      constexpr int kCoordsPerVertex = 4;
+      glVertexAttribPointer(kAttribIndex, kCoordsPerVertex, GL_FLOAT,
+                            false, 0, 0);
+      glEnableVertexAttribArray(kAttribIndex);
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+      glDeleteBuffers(1, &full_screen_quad_vbo);
+      glBindVertexArray(0);
+      glDeleteVertexArrays(1, &full_screen_quad_vao);
     }
     glutSwapBuffers();
 

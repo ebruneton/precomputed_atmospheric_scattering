@@ -45,10 +45,10 @@ independent of our atmosphere model. The only part which is related to it is the
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <stdexcept>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <stdexcept>
 
 namespace atmosphere {
 namespace demo {
@@ -116,10 +116,12 @@ Demo::Demo(int viewport_width, int viewport_height) :
   glutInitWindowSize(viewport_width, viewport_height);
   window_id_ = glutCreateWindow("Atmosphere Demo");
   INSTANCES[window_id_] = this;
-  if (!gladLoadGL())
-      throw std::runtime_error("GLAD initialization failed");
-  if (!GLAD_GL_VERSION_3_3)
-      throw std::runtime_error("OpenGL 3.3 or higher is required");
+  if (!gladLoadGL()) {
+    throw std::runtime_error("GLAD initialization failed");
+  }
+  if (!GLAD_GL_VERSION_3_3) {
+    throw std::runtime_error("OpenGL 3.3 or higher is required");
+  }
 
   glutDisplayFunc([]() {
     INSTANCES[glutGetWindow()]->HandleRedisplayEvent();
@@ -145,14 +147,14 @@ Demo::Demo(int viewport_width, int viewport_height) :
   glGenBuffers(1, &full_screen_quad_vbo_);
   glBindBuffer(GL_ARRAY_BUFFER, full_screen_quad_vbo_);
   const GLfloat vertices[] = {
-      -1.0, -1.0, 0.0, 1.0,
-      +1.0, -1.0, 0.0, 1.0,
-      -1.0, +1.0, 0.0, 1.0,
-      +1.0, +1.0, 0.0, 1.0,
+    -1.0, -1.0, 0.0, 1.0,
+    +1.0, -1.0, 0.0, 1.0,
+    -1.0, +1.0, 0.0, 1.0,
+    +1.0, +1.0, 0.0, 1.0,
   };
-  constexpr int kCoordsPerVertex = 4;
   glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
   constexpr GLuint kAttribIndex = 0;
+  constexpr int kCoordsPerVertex = 4;
   glVertexAttribPointer(kAttribIndex, kCoordsPerVertex, GL_FLOAT, false, 0, 0);
   glEnableVertexAttribArray(kAttribIndex);
   glBindVertexArray(0);
@@ -407,7 +409,7 @@ void Demo::HandleRedisplayEvent() const {
          << " +/-: increase/decrease exposure (" << exposure_ << ")\n"
          << " 1-9: predefined views\n";
     text_renderer_->SetColor(1.0, 0.0, 0.0);
-    text_renderer_->DrawText(help.str().c_str(), 5, 4);
+    text_renderer_->DrawText(help.str(), 5, 4);
   }
 
   glutSwapBuffers();

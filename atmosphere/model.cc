@@ -431,7 +431,7 @@ GLuint NewTexture2d(int width, int height) {
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
   // 16F precision for the transmittance gives artifacts.
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0,
-      GL_RGB, GL_FLOAT, NULL);
+      GL_RGBA, GL_FLOAT, NULL);
   return texture;
 }
 
@@ -451,10 +451,10 @@ GLuint NewTexture3d(int width, int height, int depth, GLenum format,
       (half_precision ? GL_RGBA16F : GL_RGBA32F) :
       (half_precision ? GL_RGB16F : GL_RGB32F);
   if (!rgb32f_supported && internal_format == GL_RGB32F) {
-      internal_format = GL_RGBA32F;
+    internal_format = GL_RGBA32F;
   }
   if (!rgb16f_supported && internal_format == GL_RGB16F) {
-      internal_format = GL_RGBA16F;
+    internal_format = GL_RGBA16F;
   }
   glTexImage3D(GL_TEXTURE_3D, 0, internal_format, width, height, depth, 0,
       format, GL_FLOAT, NULL);
@@ -763,10 +763,10 @@ Model::Model(
   glGenBuffers(1, &full_screen_quad_vbo_);
   glBindBuffer(GL_ARRAY_BUFFER, full_screen_quad_vbo_);
   const GLfloat vertices[] = {
-      -1.0, -1.0,
-      +1.0, -1.0,
-      -1.0, +1.0,
-      +1.0, +1.0,
+    -1.0, -1.0,
+    +1.0, -1.0,
+    -1.0, +1.0,
+    +1.0, +1.0,
   };
   constexpr int kCoordsPerVertex = 2;
   glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);

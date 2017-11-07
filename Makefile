@@ -29,11 +29,12 @@
 GPP := g++
 GPP_FLAGS := -Wall -Wmain -pedantic -pedantic-errors -std=c++11
 INCLUDE_FLAGS := \
-    -I. -Iexternal/glad/include -Iexternal -Iexternal/dimensional_types -Iexternal/progress_bar
+    -I. -Iexternal -Iexternal/dimensional_types -Iexternal/glad/include \
+    -Iexternal/progress_bar
 DEBUG_FLAGS := -g
 RELEASE_FLAGS := -DNDEBUG -O3 -fexpensive-optimizations
 
-DIRS := atmosphere tools text external/glad/src
+DIRS := atmosphere text tools
 HEADERS := $(shell find $(DIRS) -name "*.h")
 SOURCES := $(shell find $(DIRS) -name "*.cc")
 GLSL_SOURCES := $(shell find $(DIRS) -name "*.glsl")
@@ -49,7 +50,6 @@ all: lint doc test integration_test demo
 # <regex>.
 lint: $(HEADERS) $(SOURCES)
 	cpplint --exclude=tools/docgen_main.cc \
-            --exclude=external/glad/src/glad.cc \
             --exclude=atmosphere/reference/functions.h \
             --exclude=atmosphere/reference/model_test.cc --root=$(PWD) $^
 	cpplint --filter=-runtime/references --root=$(PWD) \
@@ -87,21 +87,21 @@ output/Debug/atmosphere_test: \
 	$(GPP) $^ -o $@
 
 output/Release/atmosphere_integration_test: \
-    output/Release/external/glad/src/glad.o \
     output/Release/atmosphere/model.o \
     output/Release/atmosphere/reference/functions.o \
     output/Release/atmosphere/reference/model.o \
     output/Release/atmosphere/reference/model_test.o \
     output/Release/external/dimensional_types/test/test_main.o \
+    output/Release/external/glad/src/glad.o \
     output/Release/external/progress_bar/util/progress_bar.o
 	$(GPP) $^ -pthread -ldl -lglut -lGL -o $@
 
 output/Debug/atmosphere_demo: \
-    output/Debug/external/glad/src/glad.o \
-    output/Debug/text/text_renderer.o \
     output/Debug/atmosphere/demo/demo.o \
     output/Debug/atmosphere/demo/demo_main.o \
-    output/Debug/atmosphere/model.o
+    output/Debug/atmosphere/model.o \
+    output/Debug/text/text_renderer.o \
+    output/Debug/external/glad/src/glad.o
 	$(GPP) $^ -pthread -ldl -lglut -lGL -o $@
 
 output/Debug/%.o: %.cc

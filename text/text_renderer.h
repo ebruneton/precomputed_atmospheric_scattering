@@ -32,6 +32,8 @@
 
 #include <glad/glad.h>
 
+#include <string>
+
 class TextRenderer {
  public:
   TextRenderer();
@@ -40,17 +42,19 @@ class TextRenderer {
   ~TextRenderer();
 
   void SetColor(float r, float g, float b);
-  void DrawText(const char* text, int left, int top);
- private:
-  GLuint fontTexture_;
-  GLuint vao_, vbo_;
-  GLuint program_;
-  GLfloat color_[3];
+  void DrawText(const std::string& text, int left, int top);
 
+ private:
   void SetupTexture();
   void SetupBuffers();
   void SetupProgram();
-  void DrawChar(char c, int x, int y, int viewportWidth, int viewportHeight);
+  void DrawChar(char c, int x, int y, int viewport_width, int viewport_height);
+
+  GLuint font_texture_;
+  GLuint char_vao_;
+  GLuint char_vbo_;
+  GLuint program_;
+  GLfloat color_[3];
 };
 
 #endif  // TEXT_TEXT_RENDERER_H_
