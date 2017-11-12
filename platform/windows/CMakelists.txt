@@ -23,22 +23,21 @@ make_absolute(GENERATED_FILES_INCLUDES)
 
 set (ROOT ../../)
 set (SRC ${ROOT}atmosphere/)
+set (TEXT ${ROOT}text/)
 set (PUB ${ROOT}bin/)
 set (PUB_ABS ${PUB})
 make_absolute(PUB_ABS)
 
+set (EXT ${ROOT}external/)
+
 set (PLATFORM_WIN_DIR ./)
-set (EXT ${PLATFORM_WIN_DIR}external/)
+set (EXT_WIN ${PLATFORM_WIN_DIR}external/)
 
-set (GLEW ${EXT}glew/)
-set (GLEW_INCLUDES ${GLEW}include)
-make_absolute(GLEW_INCLUDES)
-set (GLEW_LIBS ${GLEW}lib/Release/x64/glew32.lib)
-make_absolute(GLEW_LIBS)
-set (GLEW_DLL ${GLEW}bin/Release/x64/glew32.dll)
-make_absolute(GLEW_DLL)
+set (GLAD ${EXT}glad/)
+set (GLAD_INCLUDES ${GLAD}include)
+make_absolute(GLAD_INCLUDES)
 
-set (FREEGLUT ${EXT}freeglut/)
+set (FREEGLUT ${EXT_WIN}freeglut/)
 set (FREEGLUT_INCLUDES ${FREEGLUT}include)
 make_absolute(FREEGLUT_INCLUDES)
 set (FREEGLUT_LIBS ${FREEGLUT}lib/x64/freeglut.lib)
@@ -90,15 +89,24 @@ set(PROJSRC ${SRC})
 
 set (DEFINITIONS
 	_CRT_SECURE_NO_WARNINGS
+	NOMINMAX
 )
 make_definitions(DEFINITIONS)
 
 set (INCLUDES
 	${GENERATED_FILES_INCLUDES}
 	${ROOT_INCLUDES}
-	${GLEW_INCLUDES}
+	${GLAD_INCLUDES}
 	${FREEGLUT_INCLUDES}
 )
+
+set (TEXT_PATH ${TEXT})
+set (TEXT_FILES
+	${TEXT_PATH}font.inc
+	${TEXT_PATH}text_renderer.cc
+	${TEXT_PATH}text_renderer.h
+)
+source_group(Text FILES ${TEXT_FILES})
 
 set (MODEL_PATH ${PROJSRC})
 set (MODEL_FILES
@@ -122,21 +130,29 @@ set (DEMO_FILES
 add_glsl_inc_cmd(${DEMO_PATH}demo.glsl ${ROOT} ${GENERATED_FILES_PATH})
 source_group(Demo FILES ${DEMO_FILES})
 
+set (GLAD_PATH ${GLAD}src/)
+set (GLAD_FILES
+	${GLAD_PATH}glad.cc
+	${GLAD}include/glad/glad.h
+)
+source_group(Glad FILES ${GLAD_FILES})
+
 set (SRC_FILES
+	${TEXT_FILES}
 	${MODEL_FILES}
 	${DEMO_FILES}
+	${GLAD_FILES}
 )
 
 set (LIBS
 	Shlwapi.lib
 	Shell32.lib
-	${GLEW_LIBS}
 	${FREEGLUT_LIBS}
 )
 
 add_executable (${PROJ} ${SRC_FILES})
 
-set_target_properties(${PROJ} PROPERTIES COMPILE_FLAGS ${DEFINITIONS})
+target_compile_definitions(${PROJ} PUBLIC ${DEFINITIONS})
 set_target_properties(${PROJ} PROPERTIES INCLUDE_DIRECTORIES "${INCLUDES}")
 set_target_properties(${PROJ} PROPERTIES DEBUG_POSTFIX "_d" )
 set_target_properties(${PROJ} PROPERTIES RELEASE_POSTFIX "" )
@@ -145,6 +161,5 @@ set_target_properties(${PROJ} PROPERTIES RELWITHDEBINFO_POSTFIX "_r" )
 target_link_libraries(${PROJ} ${LIBS})
 
 add_custom_command(TARGET ${PROJ} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${GLEW_DLL} $<TARGET_FILE_DIR:${PROJ}> 
-		&& ${CMAKE_COMMAND} -E copy_if_different ${FREEGLUT_DLL} $<TARGET_FILE_DIR:${PROJ}>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FREEGLUT_DLL} $<TARGET_FILE_DIR:${PROJ}>
 )

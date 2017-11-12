@@ -9,7 +9,7 @@ mkdir %CMAKEFOLDER%
 
 pushd %CMAKEFOLDER%
 
-%CMAKEPATH%\cmake -G"Visual Studio 14 2015 Win64" ..
+%CMAKEPATH%\cmake -G"Visual Studio 15 2017 Win64" ..
 
 popd
 
