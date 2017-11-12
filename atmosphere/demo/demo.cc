@@ -39,12 +39,13 @@ independent of our atmosphere model. The only part which is related to it is the
 
 #include "atmosphere/demo/demo.h"
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 #include <GL/freeglut.h>
 
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <stdexcept>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -70,7 +71,7 @@ constexpr double kSunAngularRadius = 0.00935 / 2.0;
 constexpr double kSunSolidAngle = kPi * kSunAngularRadius * kSunAngularRadius;
 constexpr double kLengthUnitInMeters = 1000.0;
 
-const char* kVertexShader = R"(
+const char kVertexShader[] = R"(
     #version 330
     uniform mat4 model_from_view;
     uniform mat4 view_from_clip;
@@ -99,8 +100,10 @@ global variable):
 
 Demo::Demo(int viewport_width, int viewport_height) :
     use_constant_solar_spectrum_(false),
+    use_ozone_(true),
     use_combined_textures_(true),
-    use_luminance_(true),
+    use_half_precision_(true),
+    use_luminance_(NONE),
     do_white_balance_(false),
     show_help_(true),
     program_(0),
@@ -113,7 +116,12 @@ Demo::Demo(int viewport_width, int viewport_height) :
   glutInitWindowSize(viewport_width, viewport_height);
   window_id_ = glutCreateWindow("Atmosphere Demo");
   INSTANCES[window_id_] = this;
-  glewInit();
+  if (!gladLoadGL()) {
+    throw std::runtime_error("GLAD initialization failed");
+  }
+  if (!GLAD_GL_VERSION_3_3) {
+    throw std::runtime_error("OpenGL 3.3 or higher is required");
+  }
 
   glutDisplayFunc([]() {
     INSTANCES[glutGetWindow()]->HandleRedisplayEvent();
@@ -134,7 +142,26 @@ Demo::Demo(int viewport_width, int viewport_height) :
     INSTANCES[glutGetWindow()]->HandleMouseWheelEvent(dir);
   });
 
+  glGenVertexArrays(1, &full_screen_quad_vao_);
+  glBindVertexArray(full_screen_quad_vao_);
+  glGenBuffers(1, &full_screen_quad_vbo_);
+  glBindBuffer(GL_ARRAY_BUFFER, full_screen_quad_vbo_);
+  const GLfloat vertices[] = {
+    -1.0, -1.0, 0.0, 1.0,
+    +1.0, -1.0, 0.0, 1.0,
+    -1.0, +1.0, 0.0, 1.0,
+    +1.0, +1.0, 0.0, 1.0,
+  };
+  glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
+  constexpr GLuint kAttribIndex = 0;
+  constexpr int kCoordsPerVertex = 4;
+  glVertexAttribPointer(kAttribIndex, kCoordsPerVertex, GL_FLOAT, false, 0, 0);
+  glEnableVertexAttribArray(kAttribIndex);
+  glBindVertexArray(0);
+
   InitModel();
+
+  text_renderer_.reset(new TextRenderer);
 }
 
 /*
@@ -143,13 +170,15 @@ Demo::Demo(int viewport_width, int viewport_height) :
 
 Demo::~Demo() {
   glDeleteProgram(program_);
+  glDeleteBuffers(1, &full_screen_quad_vbo_);
+  glDeleteVertexArrays(1, &full_screen_quad_vao_);
   INSTANCES.erase(window_id_);
 }
 
 /*
 <p>The "real" initialization work, which is specific to our atmosphere model,
 is done in the following method. It starts with the creation of an atmosphere
-<code>Model</code> instance, with parameters corresponding the to Earth
+<code>Model</code> instance, with parameters corresponding to the Earth
 atmosphere:
 */
 
@@ -158,6 +187,7 @@ void Demo::InitModel() {
   // (see http://rredc.nrel.gov/solar/spectra/am1.5/ASTMG173/ASTMG173.html),
   // summed and averaged in each bin (e.g. the value for 360nm is the average
   // of the ASTM G-173 values for all wavelengths between 360 and 370nm).
+  // Values in W.m^-2.
   constexpr int kLambdaMin = 360;
   constexpr int kLambdaMax = 830;
   constexpr double kSolarIrradiance[48] = {
@@ -168,6 +198,25 @@ void Demo::InitModel() {
     1.41018, 1.36775, 1.34188, 1.31429, 1.28303, 1.26758, 1.2367, 1.2082,
     1.18737, 1.14683, 1.12362, 1.1058, 1.07124, 1.04992
   };
+  // Values from http://www.iup.uni-bremen.de/gruppen/molspec/databases/
+  // referencespectra/o3spectra2011/index.html for 233K, summed and averaged in
+  // each bin (e.g. the value for 360nm is the average of the original values
+  // for all wavelengths between 360 and 370nm). Values in m^2.
+  constexpr double kOzoneCrossSection[48] = {
+    1.18e-27, 2.182e-28, 2.818e-28, 6.636e-28, 1.527e-27, 2.763e-27, 5.52e-27,
+    8.451e-27, 1.582e-26, 2.316e-26, 3.669e-26, 4.924e-26, 7.752e-26, 9.016e-26,
+    1.48e-25, 1.602e-25, 2.139e-25, 2.755e-25, 3.091e-25, 3.5e-25, 4.266e-25,
+    4.672e-25, 4.398e-25, 4.701e-25, 5.019e-25, 4.305e-25, 3.74e-25, 3.215e-25,
+    2.662e-25, 2.238e-25, 1.852e-25, 1.473e-25, 1.209e-25, 9.423e-26, 7.455e-26,
+    6.566e-26, 5.105e-26, 4.15e-26, 4.228e-26, 3.237e-26, 2.451e-26, 2.801e-26,
+    2.534e-26, 1.624e-26, 1.465e-26, 2.078e-26, 1.383e-26, 7.105e-27
+  };
+  // From https://en.wikipedia.org/wiki/Dobson_unit, in molecules.m^-2.
+  constexpr double kDobsonUnit = 2.687e20;
+  // Maximum number density of ozone molecules, in m^-3 (computed so at to get
+  // 300 Dobson units of ozone - for this we divide 300 DU by the integral of
+  // the ozone density profile defined below, which is equal to 15km).
+  constexpr double kMaxOzoneNumberDensity = 300.0 * kDobsonUnit / 15000.0;
   // Wavelength independent solar irradiance "spectrum" (not physically
   // realistic, but was used in the original implementation).
   constexpr double kConstantSolarIrradiance = 1.5;
@@ -181,13 +230,28 @@ void Demo::InitModel() {
   constexpr double kMieSingleScatteringAlbedo = 0.9;
   constexpr double kMiePhaseFunctionG = 0.8;
   constexpr double kGroundAlbedo = 0.1;
-  constexpr double kMaxSunZenithAngle = 102.0 / 180.0 * kPi;
+  const double max_sun_zenith_angle =
+      (use_half_precision_ ? 102.0 : 120.0) / 180.0 * kPi;
+
+  DensityProfileLayer
+      rayleigh_layer(0.0, 1.0, -1.0 / kRayleighScaleHeight, 0.0, 0.0);
+  DensityProfileLayer mie_layer(0.0, 1.0, -1.0 / kMieScaleHeight, 0.0, 0.0);
+  // Density profile increasing linearly from 0 to 1 between 10 and 25km, and
+  // decreasing linearly from 1 to 0 between 25 and 40km. This is an approximate
+  // profile from http://www.kln.ac.lk/science/Chemistry/Teaching_Resources/
+  // Documents/Introduction%20to%20atmospheric%20chemistry.pdf (page 10).
+  std::vector<DensityProfileLayer> ozone_density;
+  ozone_density.push_back(
+      DensityProfileLayer(25000.0, 0.0, 0.0, 1.0 / 15000.0, -2.0 / 3.0));
+  ozone_density.push_back(
+      DensityProfileLayer(0.0, 0.0, 0.0, -1.0 / 15000.0, 8.0 / 3.0));
 
   std::vector<double> wavelengths;
   std::vector<double> solar_irradiance;
   std::vector<double> rayleigh_scattering;
   std::vector<double> mie_scattering;
   std::vector<double> mie_extinction;
+  std::vector<double> absorption_extinction;
   std::vector<double> ground_albedo;
   for (int l = kLambdaMin; l <= kLambdaMax; l += 10) {
     double lambda = static_cast<double>(l) * 1e-3;  // micro-meters
@@ -202,14 +266,18 @@ void Demo::InitModel() {
     rayleigh_scattering.push_back(kRayleigh * pow(lambda, -4));
     mie_scattering.push_back(mie * kMieSingleScatteringAlbedo);
     mie_extinction.push_back(mie);
+    absorption_extinction.push_back(use_ozone_ ?
+        kMaxOzoneNumberDensity * kOzoneCrossSection[(l - kLambdaMin) / 10] :
+        0.0);
     ground_albedo.push_back(kGroundAlbedo);
   }
 
   model_.reset(new Model(wavelengths, solar_irradiance, kSunAngularRadius,
-      kBottomRadius, kTopRadius, kRayleighScaleHeight, rayleigh_scattering,
-      kMieScaleHeight, mie_scattering, mie_extinction, kMiePhaseFunctionG,
-      ground_albedo, kMaxSunZenithAngle, kLengthUnitInMeters,
-      use_combined_textures_));
+      kBottomRadius, kTopRadius, {rayleigh_layer}, rayleigh_scattering,
+      {mie_layer}, mie_scattering, mie_extinction, kMiePhaseFunctionG,
+      ozone_density, absorption_extinction, ground_albedo, max_sun_zenith_angle,
+      kLengthUnitInMeters, use_luminance_ == PRECOMPUTED ? 15 : 3,
+      use_combined_textures_, use_half_precision_));
   model_->Init();
 
 /*
@@ -219,12 +287,13 @@ to get the final scene rendering program:
 */
 
   GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vertex_shader, 1, &kVertexShader, NULL);
+  const char* const vertex_shader_source = kVertexShader;
+  glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
   glCompileShader(vertex_shader);
 
   const std::string fragment_shader_str =
       "#version 330\n" +
-      std::string(use_luminance_ ? "#define USE_LUMINANCE\n" : "") +
+      std::string(use_luminance_ != NONE ? "#define USE_LUMINANCE\n" : "") +
       demo_glsl;
   const char* fragment_shader_source = fragment_shader_str.c_str();
   GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -268,10 +337,6 @@ because our demo app does not have any texture of its own):
       white_point_r, white_point_g, white_point_b);
   glUniform3f(glGetUniformLocation(program_, "earth_center"),
       0.0, 0.0, -kBottomRadius / kLengthUnitInMeters);
-  glUniform3f(glGetUniformLocation(program_, "sun_radiance"),
-      kSolarIrradiance[0] / kSunSolidAngle,
-      kSolarIrradiance[1] / kSunSolidAngle,
-      kSolarIrradiance[2] / kSunSolidAngle);
   glUniform2f(glGetUniformLocation(program_, "sun_size"),
       tan(kSunAngularRadius),
       cos(kSunAngularRadius));
@@ -297,7 +362,8 @@ void Demo::HandleRedisplayEvent() const {
   float uz[3] = { sin_z * cos_a, sin_z * sin_a, cos_z };
   float l = view_distance_meters_ / kLengthUnitInMeters;
 
-  // Transform matrix from camera frame to world space.
+  // Transform matrix from camera frame to world space (i.e. the inverse of a
+  // GL_MODELVIEW matrix).
   float model_from_view[16] = {
     ux[0], uy[0], uz[0], uz[0] * l,
     ux[1], uy[1], uz[1], uz[1] * l,
@@ -310,7 +376,7 @@ void Demo::HandleRedisplayEvent() const {
       model_from_view[7],
       model_from_view[11]);
   glUniform1f(glGetUniformLocation(program_, "exposure"),
-      use_luminance_ ? exposure_ * 1e-5 : exposure_);
+      use_luminance_ != NONE ? exposure_ * 1e-5 : exposure_);
   glUniformMatrix4fv(glGetUniformLocation(program_, "model_from_view"),
       1, true, model_from_view);
   glUniform3f(glGetUniformLocation(program_, "sun_direction"),
@@ -318,35 +384,32 @@ void Demo::HandleRedisplayEvent() const {
       sin(sun_azimuth_angle_radians_) * sin(sun_zenith_angle_radians_),
       cos(sun_zenith_angle_radians_));
 
-  glBegin(GL_TRIANGLE_STRIP);
-  glVertex4f(-1.0, -1.0, 0.0, 1.0);
-  glVertex4f(+1.0, -1.0, 0.0, 1.0);
-  glVertex4f(-1.0, +1.0, 0.0, 1.0);
-  glVertex4f(+1.0, +1.0, 0.0, 1.0);
-  glEnd();
+  glBindVertexArray(full_screen_quad_vao_);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  glBindVertexArray(0);
 
   if (show_help_) {
     std::stringstream help;
-    help << "\nMouse:\n"
+    help << "Mouse:\n"
          << " drag, CTRL+drag, wheel: view and sun directions\n"
          << "Keys:\n"
          << " h: help\n"
          << " s: solar spectrum (currently: "
          << (use_constant_solar_spectrum_ ? "constant" : "realistic") << ")\n"
+         << " o: ozone (currently: " << (use_ozone_ ? "on" : "off") << ")\n"
          << " t: combine textures (currently: "
          << (use_combined_textures_ ? "on" : "off") << ")\n"
+         << " p: half precision (currently: "
+         << (use_half_precision_ ? "on" : "off") << ")\n"
          << " l: use luminance (currently: "
-         << (use_luminance_ ? "on" : "off") << ")\n"
+         << (use_luminance_ == PRECOMPUTED ? "precomputed" :
+             (use_luminance_ == APPROXIMATE ? "approximate" : "off")) << ")\n"
          << " w: white balance (currently: "
          << (do_white_balance_ ? "on" : "off") << ")\n"
          << " +/-: increase/decrease exposure (" << exposure_ << ")\n"
          << " 1-9: predefined views\n";
-    glUseProgram(0);
-    glColor3f(1.0, 0.0, 0.0);
-    glRasterPos2f(-0.99, 1.0);
-    glutBitmapString(GLUT_BITMAP_9_BY_15,
-        (const unsigned char*) help.str().c_str());
-    glUseProgram(program_);
+    text_renderer_->SetColor(1.0, 0.0, 0.0);
+    text_renderer_->DrawText(help.str(), 5, 4);
   }
 
   glutSwapBuffers();
@@ -365,7 +428,8 @@ void Demo::HandleReshapeEvent(int viewport_width, int viewport_height) {
   const float kTanFovY = tan(kFovY / 2.0);
   float aspect_ratio = static_cast<float>(viewport_width) / viewport_height;
 
-  // Transform matrix from clip space to camera space.
+  // Transform matrix from clip space to camera space (i.e. the inverse of a
+  // GL_PROJECTION matrix).
   float view_from_clip[16] = {
     kTanFovY * aspect_ratio, 0.0, 0.0, 0.0,
     0.0, kTanFovY, 0.0, 0.0,
@@ -383,10 +447,18 @@ void Demo::HandleKeyboardEvent(unsigned char key) {
     show_help_ = !show_help_;
   } else if (key == 's') {
     use_constant_solar_spectrum_ = !use_constant_solar_spectrum_;
+  } else if (key == 'o') {
+    use_ozone_ = !use_ozone_;
   } else if (key == 't') {
     use_combined_textures_ = !use_combined_textures_;
+  } else if (key == 'p') {
+    use_half_precision_ = !use_half_precision_;
   } else if (key == 'l') {
-    use_luminance_ = !use_luminance_;
+    switch (use_luminance_) {
+      case NONE: use_luminance_ = APPROXIMATE; break;
+      case APPROXIMATE: use_luminance_ = PRECOMPUTED; break;
+      case PRECOMPUTED: use_luminance_ = NONE; break;
+    }
   } else if (key == 'w') {
     do_white_balance_ = !do_white_balance_;
   } else if (key == '+') {
@@ -412,7 +484,8 @@ void Demo::HandleKeyboardEvent(unsigned char key) {
   } else if (key == '9') {
     SetView(1.2e7, 0.0, 0.0, 0.93, -2.0, 10.0);
   }
-  if (key == 's' || key == 't' || key == 'l' || key == 'w') {
+  if (key == 's' || key == 'o' || key == 't' || key == 'p' || key == 'l' ||
+      key == 'w') {
     InitModel();
   }
 }

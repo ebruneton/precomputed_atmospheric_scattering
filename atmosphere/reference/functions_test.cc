@@ -301,9 +301,11 @@ class FunctionsTest : public dimensional::TestCase {
     atmosphere_parameters_.solar_irradiance[0] = kSolarIrradiance;
     atmosphere_parameters_.bottom_radius = kBottomRadius;
     atmosphere_parameters_.top_radius = kTopRadius;
-    atmosphere_parameters_.rayleigh_scale_height = kRayleighScaleHeight;
+    atmosphere_parameters_.rayleigh_density.layers[1] = DensityProfileLayer(
+        0.0 * m, 1.0, -1.0 / kRayleighScaleHeight, 0.0 / m, 0.0);
     atmosphere_parameters_.rayleigh_scattering[0] = kRayleighScattering;
-    atmosphere_parameters_.mie_scale_height = kMieScaleHeight;
+    atmosphere_parameters_.mie_density.layers[1] = DensityProfileLayer(
+        0.0 * m, 1.0, -1.0 / kMieScaleHeight, 0.0 / m, 0.0);
     atmosphere_parameters_.mie_scattering[0] = kMieScattering;
     atmosphere_parameters_.mie_extinction[0] = kMieExtinction;
     atmosphere_parameters_.ground_albedo[0] = kGroundAlbedo;
@@ -360,9 +362,9 @@ $$
 K\left[\exp\left(-\frac{r-r_\mathrm{bottom}}{K}\right)-
 \exp\left(-\frac{r_\mathrm{top}-r_\mathrm{bottom}}{K}\right)\right]
 $$
-where $K$ is the scale height. Likewise, check that for $K=\infty$ the optical
-length to the top atmosphere boundary is the distance to the top atmosphere
-boundary (using a horizontal ray).
+where $K$ is the scale height. Likewise, check that for a constant density
+profile the optical length to the top atmosphere boundary is the distance to the
+top atmosphere boundary (using a horizontal ray).
 */
 
   void TestComputeOpticalLengthToTopAtmosphereBoundary() {
@@ -371,27 +373,61 @@ boundary (using a horizontal ray).
     constexpr Length h_top = kTopRadius - kBottomRadius;
     // Vertical ray, looking top.
     ExpectNear(
-        kScaleHeight * (exp(-h_r / kScaleHeight) - exp(-h_top / kScaleHeight)),
-        ComputeOpticalLengthToTopAtmosphereBoundary(
-            atmosphere_parameters_, kScaleHeight, r, 1.0),
+        kRayleighScaleHeight * (exp(-h_r / kRayleighScaleHeight) -
+            exp(-h_top / kRayleighScaleHeight)),
+        ComputeOpticalLengthToTopAtmosphereBoundary(atmosphere_parameters_,
+            atmosphere_parameters_.rayleigh_density, r, 1.0),
         1.0 * m);
     // Horizontal ray, no exponential density fall off.
+    SetUniformAtmosphere();
     ExpectNear(
         sqrt(kTopRadius * kTopRadius - r * r),
         ComputeOpticalLengthToTopAtmosphereBoundary(atmosphere_parameters_,
-            std::numeric_limits<double>::infinity() * km, r, 0.0),
+            atmosphere_parameters_.rayleigh_density, r, 0.0),
         1.0 * m);
+  }
+
+/*
+<p><i>Atmosphere density profiles</i>: check that density profiles with
+exponentional, linear or constant density, and one or two layers, are correctly
+computed.
+*/
+
+  void TestGetProfileDensity() {
+    DensityProfile profile;
+    // Only one layer, with exponentional density.
+    profile.layers[1] =
+        DensityProfileLayer(0.0 * m, 1.0, -1.0 / km, 0.0 / km, 0.0);
+    ExpectEquals(exp(-2.0), GetProfileDensity(profile, 2.0 * km)());
+    // Only one layer, with (clamped) affine density.
+    profile.layers[1] =
+        DensityProfileLayer(0.0 * m, 0.0, 0.0 / km, -0.5 / km, 1.0);
+    ExpectEquals(1.0, GetProfileDensity(profile, 0.0 * km)());
+    ExpectEquals(0.5, GetProfileDensity(profile, 1.0 * km)());
+    ExpectEquals(0.0, GetProfileDensity(profile, 3.0 * km)());
+
+    // Two layers, with (clamped) affine density.
+    profile.layers[0] = DensityProfileLayer(
+        25.0 * km, 0.0, 0.0 / km, 1.0 / (15.0 * km), -2.0 / 3.0);
+    profile.layers[1] = DensityProfileLayer(
+        0.0 * km, 0.0, 0.0 / km, -1.0 / (15.0 * km), 8.0 / 3.0);
+    ExpectEquals(0.0, GetProfileDensity(profile, 0.0 * km)());
+    ExpectNear(0.0, GetProfileDensity(profile, 10.0 * km)(), kEpsilon);
+    ExpectNear(1.0, GetProfileDensity(profile, 25.0 * km)(), kEpsilon);
+    ExpectNear(0.0, GetProfileDensity(profile, 40.0 * km)(), kEpsilon);
+    ExpectEquals(0.0, GetProfileDensity(profile, 50.0 * km)());
   }
 
 /*
 <p><i>Transmittance to the top atmosphere boundary</i>: check that for a
 vertical ray, looking up, the numerical integration in
 <code>ComputeTransmittanceToTopAtmosphereBoundary</code> gives the expected
-result, which can be computed analytically (using the above equation for the
-optical length). Likewise, check that for a horizontal ray, without Mie
-scattering, and with a uniform density of air molecules (Rayleigh scale height
-set to $\infty$), the optical depth is the Rayleigh scattering coefficient times
-the distance to the top atmospere boundary.
+result, which can be computed analytically for an exponential profile (using the
+above equation for the optical length) or for a triangular profile (such as the
+one used for ozone). Likewise, check that for a horizontal ray, without Mie
+scattering, and with a uniform density of air molecules, the optical depth is
+the Rayleigh scattering coefficient times the distance to the top atmospere
+boundary.
 */
 
   void TestComputeTransmittanceToTopAtmosphereBoundary() {
@@ -407,6 +443,20 @@ the distance to the top atmospere boundary.
         exp(-(rayleigh_optical_depth + mie_optical_depth)),
         ComputeTransmittanceToTopAtmosphereBoundary(
             atmosphere_parameters_, r, 1.0)[0],
+        Number(kEpsilon));
+    // Vertical ray, looking up, no Rayleigh or Mie, only absorption, with a
+    // triangular profile (whose integral is equal to 15km).
+    atmosphere_parameters_.rayleigh_density.layers[1] = DensityProfileLayer();
+    atmosphere_parameters_.mie_density.layers[1] = DensityProfileLayer();
+    atmosphere_parameters_.absorption_density.layers[0] = DensityProfileLayer(
+        25.0 * km, 0.0, 0.0 / km, 1.0 / (15.0 * km), -2.0 / 3.0);
+    atmosphere_parameters_.absorption_density.layers[1] = DensityProfileLayer(
+        0.0 * km, 0.0, 0.0 / km, -1.0 / (15.0 * km), 8.0 / 3.0);
+    atmosphere_parameters_.absorption_extinction[0] = 0.02 / km;
+    ExpectNear(
+        exp(-Number(0.02 * 15.0)),
+        ComputeTransmittanceToTopAtmosphereBoundary(
+            atmosphere_parameters_, kBottomRadius, 1.0)[0],
         Number(kEpsilon));
     // Horizontal ray, uniform atmosphere without aerosols.
     SetUniformAtmosphere();
@@ -1083,7 +1133,7 @@ quadrilinearly interpolated lookup in the precomputed single scattering texture.
 /*
 <p><i>Multiple scattering, step 1</i>: check that the numerical integration in
 <code>ComputeScatteringDensity</code> gives the expected result in two cases
-where the integral can be computed anaytically:
+where the integral can be computed analytically:
 <ul>
 <li>if the incident radiance from the $(n-1)$-th order is the same in all
 directions, and if the ground albedo is $0$. In this case the scattered radiance
@@ -1141,7 +1191,7 @@ horizontal direction for the scattered radiance).</li>
 /*
 <p><i>Multiple scattering, step 2</i>: check that the numerical integration in
 <code>ComputeMultipleScattering</code> gives the expected result in some cases
-where the integral can be computed anaytically. If the radiance computed from
+where the integral can be computed analytically. If the radiance computed from
 step 1 is the same everywhere and in all directions, and if the transmittance
 is 1, then the numerical integration in <code>ComputeMultipleScattering</code>
 should simply be equal to the radiance times the distance to the nearest
@@ -1400,10 +1450,14 @@ to remove aerosols:
 
  private:
   void SetUniformAtmosphere() {
-    atmosphere_parameters_.rayleigh_scale_height =
-        std::numeric_limits<double>::infinity() * km;
-    atmosphere_parameters_.mie_scale_height =
-        std::numeric_limits<double>::infinity() * km;
+    atmosphere_parameters_.rayleigh_density.layers[0] = DensityProfileLayer();
+    atmosphere_parameters_.rayleigh_density.layers[1] =
+        DensityProfileLayer(0.0 * m, 0.0, 0.0 / m, 0.0 / m, 1.0);
+    atmosphere_parameters_.mie_density.layers[0] = DensityProfileLayer();
+    atmosphere_parameters_.mie_density.layers[1] =
+        DensityProfileLayer(0.0 * m, 0.0, 0.0 / m, 0.0 / m, 1.0);
+    atmosphere_parameters_.absorption_density.layers[0] = DensityProfileLayer();
+    atmosphere_parameters_.absorption_density.layers[1] = DensityProfileLayer();
   }
 
   void RemoveAerosols() {
@@ -1429,6 +1483,9 @@ FunctionsTest distance_to_top_atmosphere_boundary(
 FunctionsTest ray_intersects_ground(
     "RayIntersectsGround",
     &FunctionsTest::TestRayIntersectsGround);
+FunctionsTest get_profile_density(
+    "GetProfileDensity",
+    &FunctionsTest::TestGetProfileDensity);
 FunctionsTest compute_optical_length_to_top_atmosphere_boundary(
     "ComputeOpticalLengthToTopAtmosphereBoundary",
     &FunctionsTest::TestComputeOpticalLengthToTopAtmosphereBoundary);

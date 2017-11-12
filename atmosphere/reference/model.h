@@ -36,8 +36,9 @@ To use it:
 parameters, and a directory where the precomputed textures can be cached,</li>
 <li>call <code>Init</code> to precompute the atmosphere textures (or read
 them from the cache directory if they have already been precomputed),</li>
-<li>call <code>GetSkyRadiance</code>, <code>GetSkyRadianceToPoint</code> and
-<code>GetSunAndSkyIrradiance</code> as desired,</li>
+<li>call <code>GetSolarRadiance</code>, <code>GetSkyRadiance</code>,
+<code>GetSkyRadianceToPoint</code> and <code>GetSunAndSkyIrradiance</code> as
+desired,</li>
 <li>delete your <code>Model</code> when you no longer need it (the destructor
 deletes the precomputed textures from memory).</li>
 </ul>
@@ -61,6 +62,8 @@ class Model {
         const std::string& cache_directory);
 
   void Init(unsigned int num_scattering_orders = 4);
+
+  RadianceSpectrum GetSolarRadiance() const;
 
   RadianceSpectrum GetSkyRadiance(Position camera, Direction view_ray,
       Length shadow_length, Direction sun_direction,

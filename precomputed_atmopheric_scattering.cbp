@@ -64,11 +64,12 @@
 			<Add option="-std=c++11" />
 			<Add directory="external" />
 			<Add directory="external/dimensional_types" />
+			<Add directory="external/glad/include" />
 			<Add directory="external/progress_bar" />
 		</Compiler>
 		<Linker>
 			<Add option="-pthread" />
-			<Add library="GLEW" />
+			<Add library="dl" />
 			<Add library="glut" />
 			<Add library="GL" />
 		</Linker>
@@ -184,6 +185,16 @@
 			<Option target="Test" />
 			<Option target="IntegrationTest" />
 		</Unit>
+		<Unit filename="external/glad/include/glad/glad.h">
+			<Option target="Debug" />
+			<Option target="Release" />
+			<Option target="IntegrationTest" />
+		</Unit>
+		<Unit filename="external/glad/src/glad.cc">
+			<Option target="Debug" />
+			<Option target="Release" />
+			<Option target="IntegrationTest" />
+		</Unit>
 		<Unit filename="external/minpng/minpng.h">
 			<Option target="IntegrationTest" />
 		</Unit>
@@ -194,6 +205,18 @@
 			<Option target="IntegrationTest" />
 		</Unit>
 		<Unit filename="index" />
+		<Unit filename="text/font.inc">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="text/text_renderer.cc">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="text/text_renderer.h">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
 		<Unit filename="tools/docgen_main.cc">
 			<Option target="Docgen" />
 		</Unit>

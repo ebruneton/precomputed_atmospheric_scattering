@@ -60,14 +60,25 @@ implementation</a>:
   <li>partially implement the light shaft algorithm presented in the paper (it
     implements Eqs. 17 and 18, but not the shadow volume algorithm),
   </li>
-  <li>uses a configurable extra-terrestrial solar spectrum, and converts the
-    radiance values to RGB luminance values as described in <a
-    href="https://arxiv.org/pdf/1612.04336.pdf">A Qualitative and Quantitative
-    Evaluation of 8 Clear Sky Models</a>. This gives almost the same results as
-    with a full spectral rendering method, at a fraction of the cost (we check
-    this by comparing the GPU results against full spectral CPU renderings).
+  <li>uses a configurable extra-terrestrial solar spectrum, and either
+    <ul>
+      <li>converts the spectral radiance values to RGB luminance values as
+      described in <a href="https://arxiv.org/pdf/1612.04336.pdf">A Qualitative
+      and Quantitative Evaluation of 8 Clear Sky Models</a> (section 14.3),</li>
+      <li>or precomputes luminance values instead of spectral radiance values,
+      as described in <a href=
+      "http://www.oskee.wz.cz/stranka/uploads/SCCG10ElekKmoch.pdf">Real-time
+      Spectral Scattering in Large-scale Natural Participating Media</a>
+      (section 4.4). The precomputation phase is then slower than with the above
+      option, but uses the same amount of GPU memory.</li>
+    </ul>
+    This gives almost the same results as with a full spectral rendering method,
+    at a fraction of the cost (we check this by comparing the GPU results
+    against full spectral CPU renderings).
   </li>
 </ul>
+In addition, the new implementation adds support for the ozone layer, and for
+custom density profiles for air molecules and aerosols.
 
 <p>The sections below explain how this new implementation can be used, present
 its structure and its documentation and give more details about its tests.
@@ -81,12 +92,9 @@ in <a href="atmosphere/model.h.html">model.h</a>, and as demonstrated in the
 demo in <code>atmosphere/demo</code>. To run this demo, simply type <code>make
 demo</code> in the main directory.
 
-<p>The default settings of this demo use the real solar spectrum, and display
-luminance values computed as described in Section 14.3 of
-<a href="https://arxiv.org/pdf/1612.04336.pdf">A Qualitative and Quantitative
-Evaluation of 8 Clear Sky Models</a>. To simulate the settings of the original
-implementation, set the solar spectrum to "constant", and turn off the
-"use luminance" setting.
+<p>The default settings of this demo use the real solar spectrum, with an ozone
+layer. To simulate the settings of the original implementation, set the solar
+spectrum to "constant", and turn off the ozone layer.
 
 <h2>Structure</h2>
 

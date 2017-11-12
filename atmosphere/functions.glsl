@@ -253,14 +253,27 @@ definition and the
 <a href="https://en.wikipedia.org/wiki/Beer-Lambert_law">Beer-Lambert law</a>,
 this involves the integral of the number density of air molecules along the
 segment $[\bp,\bi]$, as well as the integral of the number density of aerosols
-along this segment. Both integrals have the same form and, when the segment
-$[\bp,\bi]$ does not intersect the ground, they can be computed numerically with
-the help of the following auxilliary function (using the <a href=
-"https://en.wikipedia.org/wiki/Trapezoidal_rule">trapezoidal rule</a>):
+and the integral of the number density of air molecules that absorb light
+(e.g. ozone) - along the same segment. These 3 integrals have the same form and,
+when the segment $[\bp,\bi]$ does not intersect the ground, they can be computed
+numerically with the help of the following auxilliary function (using the <a
+href="https://en.wikipedia.org/wiki/Trapezoidal_rule">trapezoidal rule</a>):
 */
 
+Number GetLayerDensity(IN(DensityProfileLayer) layer, Length altitude) {
+  Number density = layer.exp_term * exp(layer.exp_scale * altitude) +
+      layer.linear_term * altitude + layer.constant_term;
+  return clamp(density, Number(0.0), Number(1.0));
+}
+
+Number GetProfileDensity(IN(DensityProfile) profile, Length altitude) {
+  return altitude < profile.layers[0].width ?
+      GetLayerDensity(profile.layers[0], altitude) :
+      GetLayerDensity(profile.layers[1], altitude);
+}
+
 Length ComputeOpticalLengthToTopAtmosphereBoundary(
-    IN(AtmosphereParameters) atmosphere, Length scale_height,
+    IN(AtmosphereParameters) atmosphere, IN(DensityProfile) profile,
     Length r, Number mu) {
   assert(r >= atmosphere.bottom_radius && r <= atmosphere.top_radius);
   assert(mu >= -1.0 && mu <= 1.0);
@@ -277,7 +290,7 @@ Length ComputeOpticalLengthToTopAtmosphereBoundary(
     Length r_i = sqrt(d_i * d_i + 2.0 * r * mu * d_i + r * r);
     // Number density at the current sample point (divided by the number density
     // at the bottom of the atmosphere, yielding a dimensionless number).
-    Number y_i = exp(-(r_i - atmosphere.bottom_radius) / scale_height);
+    Number y_i = GetProfileDensity(profile, r_i - atmosphere.bottom_radius);
     // Sample weight (from the trapezoidal rule).
     Number weight_i = i == 0 || i == SAMPLE_COUNT ? 0.5 : 1.0;
     result += y_i * weight_i * dx;
@@ -297,10 +310,13 @@ DimensionlessSpectrum ComputeTransmittanceToTopAtmosphereBoundary(
   return exp(-(
       atmosphere.rayleigh_scattering *
           ComputeOpticalLengthToTopAtmosphereBoundary(
-              atmosphere, atmosphere.rayleigh_scale_height, r, mu) +
+              atmosphere, atmosphere.rayleigh_density, r, mu) +
       atmosphere.mie_extinction *
           ComputeOpticalLengthToTopAtmosphereBoundary(
-              atmosphere, atmosphere.mie_scale_height, r, mu)));
+              atmosphere, atmosphere.mie_density, r, mu) +
+      atmosphere.absorption_extinction *
+          ComputeOpticalLengthToTopAtmosphereBoundary(
+              atmosphere, atmosphere.absorption_density, r, mu)));
 }
 
 /*
@@ -510,6 +526,43 @@ very close to the horizon, due to the finite precision and rounding errors of
 floating point operations. And also because the caller generally has more robust
 ways to know whether a ray intersects the ground or not (see below).
 
+<p>Finally, we will also need the transmittance between a point in the
+atmosphere and the Sun. The Sun is not a point light source, so this is an
+integral of the transmittance over the Sun disc. Here we consider that the
+transmittance is constant over this disc, except below the horizon, where the
+transmittance is 0. As a consequence, the transmittance to the Sun can be
+computed with <code>GetTransmittanceToTopAtmosphereBoundary</code>, times the
+fraction of the Sun disc which is above the horizon.
+
+<p>This fraction varies from 0 when the Sun zenith angle $\theta_s$ is larger
+than the horizon zenith angle $\theta_h$ plus the Sun angular radius $\alpha_s$,
+to 1 when $\theta_s$ is smaller than $\theta_h-\alpha_s$. Equivalently, it
+varies from 0 when $\mu_s=\cos\theta_s$ is smaller than
+$\cos(\theta_h+\alpha_s)\approx\cos\theta_h-\alpha_s\sin\theta_h$ to 1 when
+$\mu_s$ is larger than
+$\cos(\theta_h-\alpha_s)\approx\cos\theta_h+\alpha_s\sin\theta_h$. In between,
+the visible Sun disc fraction varies approximately like a smoothstep (this can
+be verified by plotting the area of <a
+href="https://en.wikipedia.org/wiki/Circular_segment">circular segment</a> as a
+function of its <a href="https://en.wikipedia.org/wiki/Sagitta_(geometry)"
+>sagitta</a>). Therefore, since $\sin\theta_h=r_{\mathrm{bottom}}/r$, we can
+approximate the transmittance to the Sun with the following function:
+*/
+
+DimensionlessSpectrum GetTransmittanceToSun(
+    IN(AtmosphereParameters) atmosphere,
+    IN(TransmittanceTexture) transmittance_texture,
+    Length r, Number mu_s) {
+  Number sin_theta_h = atmosphere.bottom_radius / r;
+  Number cos_theta_h = -sqrt(max(1.0 - sin_theta_h * sin_theta_h, 0.0));
+  return GetTransmittanceToTopAtmosphereBoundary(
+          atmosphere, transmittance_texture, r, mu_s) *
+      smoothstep(-sin_theta_h * atmosphere.sun_angular_radius / rad,
+                 sin_theta_h * atmosphere.sun_angular_radius / rad,
+                 mu_s - cos_theta_h);
+}
+
+/*
 <h3 id="single_scattering">Single scattering</h3>
 
 <p>The single scattered radiance is the light arriving from the Sun at some
@@ -563,8 +616,8 @@ below):
 <p>The radiance arriving at $\bp$ is the product of:
 <ul>
 <li>the solar irradiance at the top of the atmosphere,</li>
-<li>the transmittance between the top of the atmosphere and $\bq$ (i.e. the
-fraction of the light at the top of the atmosphere that reaches $\bq$),</li>
+<li>the transmittance between the Sun and $\bq$ (i.e. the fraction of the Sun
+light at the top of the atmosphere that reaches $\bq$),</li>
 <li>the Rayleigh scattering coefficient at $\bq$ (i.e. the fraction of the
 light arriving at $\bq$ which is scattered, in any direction),</li>
 <li>the Rayleigh phase function (i.e. the fraction of the scattered light at
@@ -602,22 +655,16 @@ void ComputeSingleScatteringIntegrand(
     OUT(DimensionlessSpectrum) rayleigh, OUT(DimensionlessSpectrum) mie) {
   Length r_d = ClampRadius(atmosphere, sqrt(d * d + 2.0 * r * mu * d + r * r));
   Number mu_s_d = ClampCosine((r * mu_s + d * nu) / r_d);
-
-  if (RayIntersectsGround(atmosphere, r_d, mu_s_d)) {
-    rayleigh = DimensionlessSpectrum(0.0);
-    mie = DimensionlessSpectrum(0.0);
-  } else {
-    DimensionlessSpectrum transmittance =
-        GetTransmittance(
-            atmosphere, transmittance_texture, r, mu, d,
-            ray_r_mu_intersects_ground) *
-        GetTransmittanceToTopAtmosphereBoundary(
-            atmosphere, transmittance_texture, r_d, mu_s_d);
-    rayleigh = transmittance * exp(
-        -(r_d - atmosphere.bottom_radius) / atmosphere.rayleigh_scale_height);
-    mie = transmittance * exp(
-        -(r_d - atmosphere.bottom_radius) / atmosphere.mie_scale_height);
-  }
+  DimensionlessSpectrum transmittance =
+      GetTransmittance(
+          atmosphere, transmittance_texture, r, mu, d,
+          ray_r_mu_intersects_ground) *
+      GetTransmittanceToSun(
+          atmosphere, transmittance_texture, r_d, mu_s_d);
+  rayleigh = transmittance * GetProfileDensity(
+      atmosphere.rayleigh_density, r_d - atmosphere.bottom_radius);
+  mie = transmittance * GetProfileDensity(
+      atmosphere.mie_density, r_d - atmosphere.bottom_radius);
 }
 
 /*
@@ -1191,10 +1238,10 @@ RadianceDensitySpectrum ComputeScatteringDensity(
       // coefficient, and the phase function for directions omega and omega_i
       // (all this summed over all particle types, i.e. Rayleigh and Mie).
       Number nu2 = dot(omega, omega_i);
-      Number rayleigh_density = exp(
-          -(r - atmosphere.bottom_radius) / atmosphere.rayleigh_scale_height);
-      Number mie_density = exp(
-          -(r - atmosphere.bottom_radius) / atmosphere.mie_scale_height);
+      Number rayleigh_density = GetProfileDensity(
+          atmosphere.rayleigh_density, r - atmosphere.bottom_radius);
+      Number mie_density = GetProfileDensity(
+          atmosphere.mie_density, r - atmosphere.bottom_radius);
       rayleigh_mie += incident_radiance * (
           atmosphere.rayleigh_scattering * rayleigh_density *
               RayleighPhaseFunction(nu2) +
@@ -1377,11 +1424,14 @@ direct irradiance.
 <p>The irradiance is the integral over an hemisphere of the incident radiance,
 times a cosine factor. For the direct ground irradiance, the incident radiance
 is the Sun radiance at the top of the atmosphere, times the transmittance
-through the atmosphere. And, since this radiance is zero outside the small solid
-angle of the Sun, we can approximate the irradiance integral with the Sun
-radiance, times the Sun solid angle (yielding the solar irradiance), times the
-transmittance and the cosine factor for the Sun direction, i.e. $\mu_s$. This
-yields the following implementation:
+through the atmosphere. And, since the Sun solid angle is small, we can
+approximate the transmittance with a constant, i.e. we can move it outside the
+irradiance integral, which can be performed over (the visible fraction of) the
+Sun disc rather than the hemisphere. Then the integral becomes equivalent to the
+ambient occlusion due to a sphere, also called a view factor, which is given in
+<a href="http://webserver.dmt.upm.es/~isidoro/tc3/Radiation%20View%20factors.pdf
+">Radiative view factors</a> (page 10). For a small solid angle, these complex
+equations can be simplified as follows:
 */
 
 IrradianceSpectrum ComputeDirectIrradiance(
@@ -1391,9 +1441,17 @@ IrradianceSpectrum ComputeDirectIrradiance(
   assert(r >= atmosphere.bottom_radius && r <= atmosphere.top_radius);
   assert(mu_s >= -1.0 && mu_s <= 1.0);
 
+  Number alpha_s = atmosphere.sun_angular_radius / rad;
+  // Approximate average of the cosine factor mu_s over the visible fraction of
+  // the Sun disc.
+  Number average_cosine_factor =
+    mu_s < -alpha_s ? 0.0 : (mu_s > alpha_s ? mu_s :
+        (mu_s + alpha_s) * (mu_s + alpha_s) / (4.0 * alpha_s));
+
   return atmosphere.solar_irradiance *
       GetTransmittanceToTopAtmosphereBoundary(
-          atmosphere, transmittance_texture, r, mu_s) * max(mu_s, 0.0);
+          atmosphere, transmittance_texture, r, mu_s) * average_cosine_factor;
+
 }
 
 /*
@@ -1429,8 +1487,6 @@ IrradianceSpectrum ComputeIndirectIrradiance(
   vec3 omega_s = vec3(sqrt(1.0 - mu_s * mu_s), 0.0, mu_s);
   for (int j = 0; j < SAMPLE_COUNT / 2; ++j) {
     Angle theta = (Number(j) + 0.5) * dtheta;
-    bool ray_r_theta_intersects_ground =
-        RayIntersectsGround(atmosphere, r, cos(theta));
     for (int i = 0; i < 2 * SAMPLE_COUNT; ++i) {
       Angle phi = (Number(i) + 0.5) * dphi;
       vec3 omega =
@@ -1440,7 +1496,7 @@ IrradianceSpectrum ComputeIndirectIrradiance(
       Number nu = dot(omega, omega_s);
       result += GetScattering(atmosphere, single_rayleigh_scattering_texture,
           single_mie_scattering_texture, multiple_scattering_texture,
-          r, omega.z, mu_s, nu, ray_r_theta_intersects_ground,
+          r, omega.z, mu_s, nu, false /* ray_r_theta_intersects_ground */,
           scattering_order) *
               omega.z * domega;
     }
@@ -1658,9 +1714,8 @@ RadianceSpectrum GetSkyRadiance(
     camera = camera + view_ray * distance_to_top_atmosphere_boundary;
     r = atmosphere.top_radius;
     rmu += distance_to_top_atmosphere_boundary;
-  }
-  // If the view ray does not intersect the atmosphere, simply return 0.
-  if (r > atmosphere.top_radius) {
+  } else if (r > atmosphere.top_radius) {
+    // If the view ray does not intersect the atmosphere, simply return 0.
     transmittance = DimensionlessSpectrum(1.0);
     return RadianceSpectrum(0.0 * watt_per_square_meter_per_sr_per_nm);
   }
@@ -1804,39 +1859,12 @@ RadianceSpectrum GetSkyRadianceToPoint(
 
 <p>To render the ground we need the irradiance received on the ground after 0 or
 more bounce(s) in the atmosphere or on the ground. The direct irradiance can be
-computed with a lookup in the transmittance texture, while the indirect
-irradiance is given by a lookup in the precomputed irradiance texture (this
-texture only contains the irradiance for horizontal surfaces; we use the
-approximation defined in our
+computed with a lookup in the transmittance texture,
+via <code>GetTransmittanceToSun</code>, while the indirect irradiance is given
+by a lookup in the precomputed irradiance texture (this texture only contains
+the irradiance for horizontal surfaces; we use the approximation defined in our
 <a href="https://hal.inria.fr/inria-00288758/en">paper</a> for the other cases).
-
-<p>Note that it is useful here to take the angular size of the sun into account.
-With a punctual light source (as we assumed in all the above functions), the
-direct irradiance on a slanted surface would be discontinuous when the sun
-moves across the horizon. With an area light source this discontinuity issue
-disappears because the visible sun area decreases continously as the sun moves
-across the horizon.
-
-<p>Taking the angular size of the sun into account, without approximations, is
-quite complex because the visible sun area is restricted both by the distant
-horizon and by the local surface. Here we ignore the masking by the local
-surface, and we approximate the masking by the horizon with a
-<code>smoothstep</code>.
-
-<p>The smoothstep approximation is justified as follows. When the sun, of
-angular radius $\alpha_s$, is at an angle $\alpha$ above the horizon (we assume
-that $\alpha$ is between $-\alpha_s$ and $\alpha_s$), the fraction $f$ of its
-surface which is visible can be computed from the area of a <a
-href="https://en.wikipedia.org/wiki/Circular_segment">circular segment</a>:
-$f(\alpha)=(\theta-\sin\theta)/2\pi$, with
-$\theta=2\arccos(-\alpha/\alpha_s)$. The smoothstep approximation is justified
-by the fact that $f$, expressed as a function of the cosine of the sun zenith
-angle, $\mu_s=\sin\alpha\approx\alpha$, is quite similar to
-<code>smoothstep(-alpha_s, alpha_s, mu_s)</code>.
-
-<p>The function below returns the direct and indirect irradiances separately,
-and takes the angular size of the sun into account by using the above
-approximation:
+The function below returns the direct and indirect irradiances separately:
 */
 
 IrradianceSpectrum GetSunAndSkyIrradiance(
@@ -1854,10 +1882,7 @@ IrradianceSpectrum GetSunAndSkyIrradiance(
 
   // Direct irradiance.
   return atmosphere.solar_irradiance *
-      GetTransmittanceToTopAtmosphereBoundary(
+      GetTransmittanceToSun(
           atmosphere, transmittance_texture, r, mu_s) *
-      smoothstep(-atmosphere.sun_angular_radius / rad,
-                 atmosphere.sun_angular_radius / rad,
-                 mu_s) *
       max(dot(normal, sun_direction), 0.0);
 }

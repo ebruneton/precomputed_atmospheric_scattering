@@ -34,8 +34,8 @@ with reference images computed with the same code, but executed on CPU in full
 spectral mode and with double precision floats. The goal is to make sure that
 the approximations made in the GPU version (half precision floats, single Mie
 scattering extrapolated from a single wavelength, and luminance values computed
-from 3 wavelengths instead of 47 wavelengths on CPU) do not significantly reduce
-the image quality.
+from 3 or 15 wavelengths instead of 47 wavelengths on CPU) do not significantly
+reduce the image quality.
 
 <p>The code is organized as follows:
 <ul>
@@ -61,7 +61,7 @@ model definitions:
 
 #include "atmosphere/reference/model.h"
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 #include <GL/freeglut.h>
 
 #include <array>
@@ -105,7 +105,7 @@ simply renders a full screen quad, and outputs the view ray direction in model
 space:
 */
 
-const char* kVertexShader = R"(
+const char kVertexShader[] = R"(
     #version 330
     uniform mat3 model_from_clip;
     layout(location = 0) in vec4 vertex;
@@ -122,13 +122,12 @@ tone mapping function to convert it to a final color. This shader takes as input
 some uniforms describing the camera and the scene:
 */
 
-const char* kFragmentShader = R"(
+const char kFragmentShader[] = R"(
     #define OUT(x) out x
     uniform vec3 camera_;
     uniform float exposure_;
     uniform vec3 earth_center_;
     uniform vec3 sun_direction_;
-    uniform vec3 sun_radiance_;
     uniform vec2 sun_size_;
     uniform vec3 ground_albedo_;
     uniform vec3 sphere_albedo_;
@@ -136,11 +135,13 @@ const char* kFragmentShader = R"(
     layout(location = 0) out vec3 color;
 
     #ifdef USE_LUMINANCE
+    #define GetSolarRadiance GetSolarLuminance
     #define GetSkyRadiance GetSkyLuminance
     #define GetSkyRadianceToPoint GetSkyLuminanceToPoint
     #define GetSunAndSkyIrradiance GetSunAndSkyIlluminance
     #endif
 
+    vec3 GetSolarRadiance();
     vec3 GetSkyRadiance(vec3 camera, vec3 view_ray, float shadow_length,
         vec3 sun_direction, out vec3 transmittance);
     vec3 GetSkyRadianceToPoint(vec3 camera, vec3 point, float shadow_length,
@@ -175,7 +176,7 @@ disk with the following function, which is a simple wrapper around the
 
 typedef std::unique_ptr<unsigned int[]> Image;
 
-const char* kOutputDir = "output/Doc/atmosphere/reference/";
+const char kOutputDir[] = "output/Doc/atmosphere/reference/";
 constexpr unsigned int kWidth = 640;
 constexpr unsigned int kHeight = 360;
 
@@ -217,6 +218,7 @@ size and radiance, surface albedos):
     // (see http://rredc.nrel.gov/solar/spectra/am1.5/ASTMG173/ASTMG173.html),
     // summed and averaged in each bin (e.g. the value for 360nm is the average
     // of the ASTM G-173 values for all wavelengths between 360 and 370nm).
+    // Values in W.m^-2.
     constexpr int kLambdaMin = 360;
     constexpr int kLambdaMax = 830;
     constexpr double kSolarIrradiance[48] = {
@@ -234,11 +236,33 @@ size and radiance, surface albedos):
     constexpr double kMieAngstromBeta = 5.328e-3;
     constexpr double kMieSingleScatteringAlbedo = 0.9;
     constexpr double kMiePhaseFunctionG = 0.8;
+    // Values from http://www.iup.uni-bremen.de/gruppen/molspec/databases/
+    // referencespectra/o3spectra2011/index.html for 233K, summed and averaged
+    // in each bin (e.g. the value for 360nm is the average of the original
+    // values for all wavelengths between 360 and 370nm). Values in m^2.
+    constexpr double kOzoneCrossSection[48] = {
+      1.18e-27, 2.182e-28, 2.818e-28, 6.636e-28, 1.527e-27, 2.763e-27, 5.52e-27,
+      8.451e-27, 1.582e-26, 2.316e-26, 3.669e-26, 4.924e-26, 7.752e-26,
+      9.016e-26, 1.48e-25, 1.602e-25, 2.139e-25, 2.755e-25, 3.091e-25, 3.5e-25,
+      4.266e-25, 4.672e-25, 4.398e-25, 4.701e-25, 5.019e-25, 4.305e-25,
+      3.74e-25, 3.215e-25, 2.662e-25, 2.238e-25, 1.852e-25, 1.473e-25,
+      1.209e-25, 9.423e-26, 7.455e-26, 6.566e-26, 5.105e-26, 4.15e-26,
+      4.228e-26, 3.237e-26, 2.451e-26, 2.801e-26, 2.534e-26, 1.624e-26,
+      1.465e-26, 2.078e-26, 1.383e-26, 7.105e-27
+    };
+    // From https://en.wikipedia.org/wiki/Dobson_unit, in molecules.m^-2.
+    constexpr dimensional::Scalar<-2, 0, 0, 0, 0> kDobsonUnit = 2.687e20 / m2;
+    // Maximum number density of ozone molecules, in m^-3 (computed so at to get
+    // 300 Dobson units of ozone - for this we divide 300 DU by the integral of
+    // the ozone density profile defined below, which is equal to 15km).
+    constexpr NumberDensity kMaxOzoneNumberDensity =
+        300.0 * kDobsonUnit / (15.0 * km);
 
     std::vector<SpectralIrradiance> solar_irradiance;
     std::vector<ScatteringCoefficient> rayleigh_scattering;
     std::vector<ScatteringCoefficient> mie_scattering;
     std::vector<ScatteringCoefficient> mie_extinction;
+    std::vector<ScatteringCoefficient> absorption_extinction;
     for (int l = kLambdaMin; l <= kLambdaMax; l += 10) {
       double lambda = static_cast<double>(l) * 1e-3;  // micro-meters
       SpectralIrradiance solar = kSolarIrradiance[(l - kLambdaMin) / 10] *
@@ -250,6 +274,8 @@ size and radiance, surface albedos):
       rayleigh_scattering.push_back(rayleigh);
       mie_scattering.push_back(mie * kMieSingleScatteringAlbedo);
       mie_extinction.push_back(mie);
+      absorption_extinction.push_back(kMaxOzoneNumberDensity *
+          kOzoneCrossSection[(l - kLambdaMin) / 10] * m2);
     }
 
     atmosphere_parameters_.solar_irradiance = IrradianceSpectrum(
@@ -257,25 +283,33 @@ size and radiance, surface albedos):
     atmosphere_parameters_.sun_angular_radius = 0.2678 * deg;
     atmosphere_parameters_.bottom_radius = 6360.0 * km;
     atmosphere_parameters_.top_radius = 6420.0 * km;
-    atmosphere_parameters_.rayleigh_scale_height = kRayleighScaleHeight;
+    atmosphere_parameters_.rayleigh_density.layers[1] = DensityProfileLayer(
+        0.0 * m, 1.0, -1.0 / kRayleighScaleHeight, 0.0 / m, 0.0);
     atmosphere_parameters_.rayleigh_scattering = ScatteringSpectrum(
         kLambdaMin * nm, kLambdaMax * nm, rayleigh_scattering);
-    atmosphere_parameters_.mie_scale_height = kMieScaleHeight;
+    atmosphere_parameters_.mie_density.layers[1] = DensityProfileLayer(
+        0.0 * m, 1.0, -1.0 / kMieScaleHeight, 0.0 / m, 0.0);
     atmosphere_parameters_.mie_scattering = ScatteringSpectrum(
         kLambdaMin * nm, kLambdaMax * nm, mie_scattering);
     atmosphere_parameters_.mie_extinction = ScatteringSpectrum(
         kLambdaMin * nm, kLambdaMax * nm, mie_extinction);
     atmosphere_parameters_.mie_phase_function_g = kMiePhaseFunctionG;
+    // Density profile increasing linearly from 0 to 1 between 10 and 25km, and
+    // decreasing linearly from 1 to 0 between 25 and 40km. Approximate profile
+    // from http://www.kln.ac.lk/science/Chemistry/Teaching_Resources/Documents/
+    // Introduction%20to%20atmospheric%20chemistry.pdf (page 10).
+    atmosphere_parameters_.absorption_density.layers[0] = DensityProfileLayer(
+        25.0 * km, 0.0, 0.0 / km, 1.0 / (15.0 * km), -2.0 / 3.0);
+    atmosphere_parameters_.absorption_density.layers[1] = DensityProfileLayer(
+        0.0 * km, 0.0, 0.0 / km, -1.0 / (15.0 * km), 8.0 / 3.0);
+    atmosphere_parameters_.absorption_extinction = ScatteringSpectrum(
+        kLambdaMin * nm, kLambdaMax * nm, absorption_extinction);
     atmosphere_parameters_.ground_albedo = DimensionlessSpectrum(0.1);
     atmosphere_parameters_.mu_s_min = cos(102.0 * deg);
 
     earth_center_ =
         Position(0.0 * m, 0.0 * m, -atmosphere_parameters_.bottom_radius);
 
-    SolidAngle sun_solid_angle = 2.0 * PI *
-        (1.0 - cos(atmosphere_parameters_.sun_angular_radius)) * sr;
-    sun_radiance_ =
-        atmosphere_parameters_.solar_irradiance * (1.0 / sun_solid_angle);
     sun_size_ = dimensional::vec2(
         tan(atmosphere_parameters_.sun_angular_radius),
         cos(atmosphere_parameters_.sun_angular_radius));
@@ -326,16 +360,23 @@ size and radiance, surface albedos):
 provide a separate method to initialize it:
 */
 
-  void InitGpuModel(bool combine_textures) {
+  void InitGpuModel(bool combine_textures, bool precomputed_luminance) {
     if (!glutGet(GLUT_INIT_STATE)) {
       int argc = 0;
       char** argv = nullptr;
+      glutInitContextVersion(3, 3);
+      glutInitContextProfile(GLUT_CORE_PROFILE);
       glutInit(&argc, argv);
       glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
       glutInitWindowSize(kWidth, kHeight);
       glutCreateWindow("ModelTest");
       glutHideWindow();
-      glewInit();
+      if (!gladLoadGL()) {
+        throw std::runtime_error("GLAD initialization failed");
+      }
+      if (!GLAD_GL_VERSION_3_3) {
+        throw std::runtime_error("OpenGL 3.3 or higher is required");
+      }
     }
 
     std::vector<double> wavelengths;
@@ -343,6 +384,11 @@ provide a separate method to initialize it:
     for (unsigned int i = 0; i < spectrum.size(); ++i) {
       wavelengths.push_back(spectrum.GetSample(i).to(nm));
     }
+    auto profile = [](DensityProfileLayer layer) {
+      return atmosphere::DensityProfileLayer(layer.width.to(m),
+          layer.exp_term(), layer.exp_scale.to(1.0 / m),
+          layer.linear_term.to(1.0 / m), layer.constant_term());
+    };
     model_.reset(new atmosphere::Model(
         wavelengths,
         atmosphere_parameters_.solar_irradiance.to(
@@ -350,23 +396,28 @@ provide a separate method to initialize it:
         atmosphere_parameters_.sun_angular_radius.to(rad),
         atmosphere_parameters_.bottom_radius.to(m),
         atmosphere_parameters_.top_radius.to(m),
-        atmosphere_parameters_.rayleigh_scale_height.to(m),
+        {profile(atmosphere_parameters_.rayleigh_density.layers[1])},
         atmosphere_parameters_.rayleigh_scattering.to(1.0 / m),
-        atmosphere_parameters_.mie_scale_height.to(m),
+        {profile(atmosphere_parameters_.mie_density.layers[1])},
         atmosphere_parameters_.mie_scattering.to(1.0 / m),
         atmosphere_parameters_.mie_extinction.to(1.0 / m),
         atmosphere_parameters_.mie_phase_function_g(),
+        {profile(atmosphere_parameters_.absorption_density.layers[0]),
+         profile(atmosphere_parameters_.absorption_density.layers[1])},
+        atmosphere_parameters_.absorption_extinction.to(1.0 / m),
         atmosphere_parameters_.ground_albedo.to(Number::Unit()),
         acos(atmosphere_parameters_.mu_s_min()),
         kLengthUnit.to(m),
-        combine_textures));
+        precomputed_luminance ? 15 : 3 /* num_computed_wavelengths */,
+        combine_textures,
+        true /* half_precision */));
     model_->Init();
     glutSwapBuffers();
   }
 
 /*
-<p>Likewise, the CPU model might not needed by all test cases, so we provide a
-separate method to initialize it:
+<p>Likewise, the CPU model might not be needed by all test cases, so we provide
+a separate method to initialize it:
 */
 
   void InitCpuModel() {
@@ -383,7 +434,8 @@ provide the following method:
 */
 
   void SetViewParameters(Angle sun_theta, Angle sun_phi, bool use_luminance) {
-    // Transform matrix from camera frame to world space.
+    // Transform matrix from camera frame to world space (i.e. the inverse of a
+    // GL_MODELVIEW matrix).
     const float kCameraPos[3] = { 2000.0, -8000.0, 500.0 };
     constexpr float kPitch = PI / 30.0;
     const float model_from_view[16] = {
@@ -393,7 +445,8 @@ provide the following method:
       0.0, 0.0, 0.0, 1.0
     };
 
-    // Transform matrix from clip space to camera space.
+    // Transform matrix from clip space to camera space (i.e. the inverse of a
+    // GL_PROJECTION matrix).
     constexpr float kFovY = 50.0 / 180.0 * PI;
     const float kTanFovY = std::tan(kFovY / 2.0);
     const float view_from_clip[16] = {
@@ -448,7 +501,8 @@ method:
 
   void InitShader() {
     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, &kVertexShader, NULL);
+    const char* const vertex_shader_source = kVertexShader;
+    glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
     glCompileShader(vertex_shader);
 
     const std::string fragment_shader_str =
@@ -497,10 +551,6 @@ method:
         sun_direction_.x(),
         sun_direction_.y(),
         sun_direction_.z());
-    glUniform3f(glGetUniformLocation(program_, "sun_radiance_"),
-        sun_radiance_(kLambdaR).to(watt_per_square_meter_per_sr_per_nm),
-        sun_radiance_(kLambdaG).to(watt_per_square_meter_per_sr_per_nm),
-        sun_radiance_(kLambdaB).to(watt_per_square_meter_per_sr_per_nm));
     glUniform2f(glGetUniformLocation(program_, "sun_size_"),
         sun_size_.x(), sun_size_.y());
     glUniform3f(glGetUniformLocation(program_, "ground_albedo_"),
@@ -523,12 +573,31 @@ with the GPU program, and then read back the framebuffer pixels.
     InitShader();
 
     glViewport(0, 0, kWidth, kHeight);
-    glBegin(GL_TRIANGLE_STRIP);
-    glVertex4f(-1.0, -1.0, 0.0, 1.0);
-    glVertex4f(+1.0, -1.0, 0.0, 1.0);
-    glVertex4f(-1.0, +1.0, 0.0, 1.0);
-    glVertex4f(+1.0, +1.0, 0.0, 1.0);
-    glEnd();
+    {
+      GLuint full_screen_quad_vao;
+      glGenVertexArrays(1, &full_screen_quad_vao);
+      glBindVertexArray(full_screen_quad_vao);
+      GLuint full_screen_quad_vbo;
+      glGenBuffers(1, &full_screen_quad_vbo);
+      glBindBuffer(GL_ARRAY_BUFFER, full_screen_quad_vbo);
+      const GLfloat vertices[] = {
+        -1.0, -1.0, 0.0, 1.0,
+        +1.0, -1.0, 0.0, 1.0,
+        -1.0, +1.0, 0.0, 1.0,
+        +1.0, +1.0, 0.0, 1.0,
+      };
+      glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
+      constexpr GLuint kAttribIndex = 0;
+      constexpr int kCoordsPerVertex = 4;
+      glVertexAttribPointer(kAttribIndex, kCoordsPerVertex, GL_FLOAT,
+                            false, 0, 0);
+      glEnableVertexAttribArray(kAttribIndex);
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+      glDeleteBuffers(1, &full_screen_quad_vbo);
+      glBindVertexArray(0);
+      glDeleteVertexArrays(1, &full_screen_quad_vao);
+    }
     glutSwapBuffers();
 
     std::unique_ptr<unsigned char[]> gl_pixels(
@@ -559,6 +628,10 @@ directly (after the definitions of the functions and macros it requires - the
 "uniforms" are provided by the fields of the test fixture class, defined at the
 end of this file):
 */
+
+  RadianceSpectrum GetSolarRadiance() {
+    return reference_model_->GetSolarRadiance();
+  }
 
   RadianceSpectrum GetSkyRadiance(Position camera, Direction view_ray,
       Length shadow_length, Direction sun_direction,
@@ -733,7 +806,8 @@ CPU). As a consequence, we expect the two images to be nearly identical:
     const std::string kCaption = "Left: GPU model, combine_textures = false. "
         "Right: CPU model. Both images show the spectral radiance at 3 "
         "predefined wavelengths (i.e. no conversion to sRGB via CIE XYZ).";
-    InitGpuModel(false /* combine_textures */);
+    InitGpuModel(false /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(65.0 * deg, 90.0 * deg, false /* use_luminance */);
     ExpectLess(
@@ -752,7 +826,8 @@ previous test case:
     const std::string kCaption = "Left: GPU model, combine_textures = true. "
         "Right: CPU model. Both images show the spectral radiance at 3 "
         "predefined wavelengths (i.e. no conversion to sRGB via CIE XYZ).";
-    InitGpuModel(true /* combine_textures */);
+    InitGpuModel(true /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(65.0 * deg, 90.0 * deg, false /* use_luminance */);
     ExpectLess(
@@ -770,7 +845,8 @@ previous test, so we expect a larger difference between the GPU and CPU results
     const std::string kCaption = "Left: GPU model, combine_textures = true. "
         "Right: CPU model. Both images show the spectral radiance at 3 "
         "predefined wavelengths (i.e. no conversion to sRGB via CIE XYZ).";
-    InitGpuModel(true /* combine_textures */);
+    InitGpuModel(true /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(88.0 * deg, 90.0 * deg, false /* use_luminance */);
     ExpectLess(
@@ -796,11 +872,12 @@ approximations:
         "GPU).";
     sphere_albedo_ = DimensionlessSpectrum(0.8);
     ground_albedo_ = DimensionlessSpectrum(0.1);
-    InitGpuModel(false /* combine_textures */);
+    InitGpuModel(false /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(65.0 * deg, 90.0 * deg, true /* use_luminance */);
     ExpectLess(
-        43.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+        40.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
   }
 
 /*
@@ -818,11 +895,12 @@ compared to the previous test case:
         "GPU).";
     sphere_albedo_ = DimensionlessSpectrum(0.8);
     ground_albedo_ = DimensionlessSpectrum(0.1);
-    InitGpuModel(true /* combine_textures */);
+    InitGpuModel(true /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(65.0 * deg, 90.0 * deg, true /* use_luminance */);
     ExpectLess(
-        43.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+        40.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
   }
 
 /*
@@ -839,11 +917,12 @@ previous test, so we expect a larger difference between the GPU and CPU results
         "GPU).";
     sphere_albedo_ = DimensionlessSpectrum(0.8);
     ground_albedo_ = DimensionlessSpectrum(0.1);
-    InitGpuModel(true /* combine_textures */);
+    InitGpuModel(true /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(88.0 * deg, 90.0 * deg, true /* use_luminance */);
     ExpectLess(
-        37.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+        35.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
   }
 
 /*
@@ -854,8 +933,6 @@ convert the sky and sun radiance to sRGB, and then multiply these sRGB values by
 the albedo, sampled at 3 wavelengths - while the correct method, used on CPU, is
 to perform all the computations, including the albedo multiplication, in a full
 spectral way, and to convert to XYZ and then to sRGB only at the very end).
-Because of this additional approximation, we expect a larger difference between
-the GPU and CPU model than in the previous test cases:
 */
 
   void TestLuminanceCombineTexturesSpectralAlbedo() {
@@ -863,7 +940,8 @@ the GPU and CPU model than in the previous test cases:
         "Right: CPU model. Both images show the sRGB luminance (radiance "
         "converted to CIE XYZ and then to sRGB - with some approximations on "
         "GPU).";
-    InitGpuModel(true /* combine_textures */);
+    InitGpuModel(true /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(65.0 * deg, 90.0 * deg, true /* use_luminance */);
     ExpectLess(
@@ -871,7 +949,7 @@ the GPU and CPU model than in the previous test cases:
   }
 
 /*
-<p>The last test case compares the sRGB luminance computations, done on GPU
+<p>The following test case compares the sRGB luminance computations, done on GPU
 vs CPU, in a "worst case" situation: combined textures on GPU and a sunset scene
 (leading to large differences in the single Mie component), and wavelength
 dependent albedo values (see the previous test case):
@@ -882,11 +960,126 @@ dependent albedo values (see the previous test case):
         "Right: CPU model. Both images show the sRGB luminance (radiance "
         "converted to CIE XYZ and then to sRGB - with some approximations on "
         "GPU).";
-    InitGpuModel(true /* combine_textures */);
+    InitGpuModel(true /* combine_textures */,
+        false /* precomputed_luminance */);
     InitCpuModel();
     SetViewParameters(88.0 * deg, 90.0 * deg, true /* use_luminance */);
     ExpectLess(
-        37.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+        35.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+  }
+
+/*
+<p>The following test case compares the sRGB luminance computations, done on GPU
+vs CPU. The GPU computations use precomputed luminance from 15 wavelenths, while
+the CPU computations use a "full spectral" rendering method (using the value of
+the spectral radiance at 47 wavelengths between 360 and 830 nm). To evaluate the
+effect of these approximations alone, we don't use the combine_textures option
+on GPU (which introduces additional approximations). Similarly, we use constant
+albedos instead of wavelength dependent albedos to avoid additional
+approximations:
+*/
+
+  void TestPrecomputedLuminanceSeparateTexturesConstantAlbedo() {
+    const std::string kCaption = "Left: GPU model, combine_textures = false. "
+        "Right: CPU model. Both images show the sRGB luminance (radiance "
+        "converted to CIE XYZ and then to sRGB - using 15 wavelengths on GPU, "
+        "vs 47 on CPU).";
+    sphere_albedo_ = DimensionlessSpectrum(0.8);
+    ground_albedo_ = DimensionlessSpectrum(0.1);
+    InitGpuModel(false /* combine_textures */,
+        true /* precomputed_luminance */);
+    InitCpuModel();
+    SetViewParameters(65.0 * deg, 90.0 * deg, true /* use_luminance */);
+    ExpectLess(
+        43.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+  }
+
+/*
+<p>The following test case is almost the same as the previous one, except that
+we use the the combine_textures option in the GPU model. This leads to some
+additional approximations on the GPU side, not present in the CPU model. As a
+consequence, we expect a slightly larger difference between the two images,
+compared to the previous test case:
+*/
+
+  void TestPrecomputedLuminanceCombineTexturesConstantAlbedo() {
+    const std::string kCaption = "Left: GPU model, combine_textures = true. "
+        "Right: CPU model. Both images show the sRGB luminance (radiance "
+        "converted to CIE XYZ and then to sRGB - using 15 wavelengths on GPU, "
+        "vs 47 on CPU).";
+    sphere_albedo_ = DimensionlessSpectrum(0.8);
+    ground_albedo_ = DimensionlessSpectrum(0.1);
+    InitGpuModel(true /* combine_textures */,
+        true /* precomputed_luminance */);
+    InitCpuModel();
+    SetViewParameters(65.0 * deg, 90.0 * deg, true /* use_luminance */);
+    ExpectLess(
+        43.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+  }
+
+/*
+<p>The following test case is the same as the previous one, for a sunset scene.
+In this case the single Mie scattering contribution is larger than in the
+previous test, so we expect a larger difference between the GPU and CPU results
+(due to the GPU approximations for the single Mie scattering term):
+*/
+
+  void TestPrecomputedLuminanceCombineTexturesConstantAlbedoSunSet() {
+    const std::string kCaption = "Left: GPU model, combine_textures = true. "
+        "Right: CPU model. Both images show the sRGB luminance (radiance "
+        "converted to CIE XYZ and then to sRGB - using 15 wavelengths on GPU, "
+        "vs 47 on CPU).";
+    sphere_albedo_ = DimensionlessSpectrum(0.8);
+    ground_albedo_ = DimensionlessSpectrum(0.1);
+    InitGpuModel(true /* combine_textures */,
+        true /* precomputed_luminance */);
+    InitCpuModel();
+    SetViewParameters(88.0 * deg, 90.0 * deg, true /* use_luminance */);
+    ExpectLess(
+        40.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+  }
+
+/*
+<p>The following test case compares the sRGB luminance computations, done on GPU
+vs CPU, with wavelength dependent albedo values. This leads, on the GPU side, to
+new approximations compared to the CPU reference model (indeed, on GPU we
+multiply the sun and sky sRGB values by the albedo, sampled at 3 wavelengths -
+while the correct method, used on CPU, is to perform all the computations,
+including the albedo multiplication, in a full spectral way, and to convert to
+XYZ and then to sRGB only at the very end).
+*/
+
+  void TestPrecomputedLuminanceCombineTexturesSpectralAlbedo() {
+    const std::string kCaption = "Left: GPU model, combine_textures = true. "
+        "Right: CPU model. Both images show the sRGB luminance (radiance "
+        "converted to CIE XYZ and then to sRGB - using 15 wavelengths on GPU, "
+        "vs 47 on CPU).";
+    InitGpuModel(true /* combine_textures */,
+        true /* precomputed_luminance */);
+    InitCpuModel();
+    SetViewParameters(65.0 * deg, 90.0 * deg, true /* use_luminance */);
+    ExpectLess(
+        39.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
+  }
+
+/*
+<p>The last test case compares the sRGB luminance computations, done on GPU
+vs CPU, in a "worst case" situation: combined textures on GPU and a sunset scene
+(leading to large differences in the single Mie component), and wavelength
+dependent albedo values (see the previous test case):
+*/
+
+  void TestPrecomputedLuminanceCombineTexturesSpectralAlbedoSunSet() {
+    const std::string kCaption = "Left: GPU model, combine_textures = true. "
+        "Right: CPU model. Both images show the sRGB luminance (radiance "
+        "converted to CIE XYZ and then to sRGB - using 15 wavelengths on GPU, "
+        "vs 47 on CPU).";
+    InitGpuModel(true /* combine_textures */,
+        true /* precomputed_luminance */);
+    InitCpuModel();
+    SetViewParameters(88.0 * deg, 90.0 * deg, true /* use_luminance */);
+    ExpectLess(
+        40.0, Compare(RenderGpuImage(), RenderCpuImage(), kCaption, true));
   }
 
 /*
@@ -900,7 +1093,6 @@ and registers the test cases in the test framework:
   DimensionlessSpectrum ground_albedo_;
   DimensionlessSpectrum sphere_albedo_;
   Position earth_center_;
-  RadianceSpectrum sun_radiance_;
   dimensional::vec2 sun_size_;
 
   std::unique_ptr<atmosphere::Model> model_;
@@ -940,6 +1132,21 @@ ModelTest luminance4(
 ModelTest luminance5(
     "LuminanceCombineTexturesSpectralAlbedoSunSet",
     &ModelTest::TestLuminanceCombineTexturesSpectralAlbedoSunSet);
+ModelTest precomputed_luminance1(
+    "PrecomputedLuminanceSeparateTexturesConstantAlbedo",
+    &ModelTest::TestPrecomputedLuminanceSeparateTexturesConstantAlbedo);
+ModelTest precomputed_luminance2(
+    "PrecomputedLuminanceCombineTexturesConstantAlbedo",
+    &ModelTest::TestPrecomputedLuminanceCombineTexturesConstantAlbedo);
+ModelTest precomputed_luminance3(
+    "PrecomputedLuminanceCombineTexturesConstantAlbedoSunSet",
+    &ModelTest::TestPrecomputedLuminanceCombineTexturesConstantAlbedoSunSet);
+ModelTest precomputed_luminance4(
+    "PrecomputedLuminanceCombineTexturesSpectralAlbedo",
+    &ModelTest::TestPrecomputedLuminanceCombineTexturesSpectralAlbedo);
+ModelTest precomputed_luminance5(
+    "PrecomputedLuminanceCombineTexturesSpectralAlbedoSunSet",
+    &ModelTest::TestPrecomputedLuminanceCombineTexturesSpectralAlbedoSunSet);
 
 }  // anonymous namespace
 

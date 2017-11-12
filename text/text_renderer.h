@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2017 Eric Bruneton
+ * Copyright (c) 2017 Ruslan Kabatsayev
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,29 +27,34 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*<h2>atmosphere/demo/demo_main.cc</h2>
-
-<p>This very simple file provides the <code>main()</code> function of our demo
-application.
-*/
-
-#include "atmosphere/demo/demo.h"
+#ifndef TEXT_TEXT_RENDERER_H_
+#define TEXT_TEXT_RENDERER_H_
 
 #include <glad/glad.h>
-#include <GL/freeglut.h>
 
-#include <memory>
+#include <string>
 
-using atmosphere::demo::Demo;
+class TextRenderer {
+ public:
+  TextRenderer();
+  TextRenderer(TextRenderer const&) = delete;
+  TextRenderer(TextRenderer&&) = delete;
+  ~TextRenderer();
 
-int main(int argc, char** argv) {
-  glutInitContextVersion(3, 3);
-  glutInitContextProfile(GLUT_CORE_PROFILE);
-  glutInit(&argc, argv);
-  glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
-  glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
+  void SetColor(float r, float g, float b);
+  void DrawText(const std::string& text, int left, int top);
 
-  std::unique_ptr<Demo> demo(new Demo(1024, 576));
-  glutMainLoop();
-  return 0;
-}
+ private:
+  void SetupTexture();
+  void SetupBuffers();
+  void SetupProgram();
+  void DrawChar(char c, int x, int y, int viewport_width, int viewport_height);
+
+  GLuint font_texture_;
+  GLuint char_vao_;
+  GLuint char_vbo_;
+  GLuint program_;
+  GLfloat color_[3];
+};
+
+#endif  // TEXT_TEXT_RENDERER_H_

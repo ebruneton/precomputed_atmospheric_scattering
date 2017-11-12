@@ -29,11 +29,12 @@
 GPP := g++
 GPP_FLAGS := -Wall -Wmain -pedantic -pedantic-errors -std=c++11
 INCLUDE_FLAGS := \
-    -I. -Iexternal -Iexternal/dimensional_types -Iexternal/progress_bar
+    -I. -Iexternal -Iexternal/dimensional_types -Iexternal/glad/include \
+    -Iexternal/progress_bar
 DEBUG_FLAGS := -g
 RELEASE_FLAGS := -DNDEBUG -O3 -fexpensive-optimizations
 
-DIRS := atmosphere tools
+DIRS := atmosphere text tools
 HEADERS := $(shell find $(DIRS) -name "*.h")
 SOURCES := $(shell find $(DIRS) -name "*.cc")
 GLSL_SOURCES := $(shell find $(DIRS) -name "*.glsl")
@@ -91,14 +92,17 @@ output/Release/atmosphere_integration_test: \
     output/Release/atmosphere/reference/model.o \
     output/Release/atmosphere/reference/model_test.o \
     output/Release/external/dimensional_types/test/test_main.o \
+    output/Release/external/glad/src/glad.o \
     output/Release/external/progress_bar/util/progress_bar.o
-	$(GPP) $^ -pthread -lGLEW -lglut -lGL -o $@
+	$(GPP) $^ -pthread -ldl -lglut -lGL -o $@
 
 output/Debug/atmosphere_demo: \
     output/Debug/atmosphere/demo/demo.o \
     output/Debug/atmosphere/demo/demo_main.o \
-    output/Debug/atmosphere/model.o
-	$(GPP) $^ -pthread -lGLEW -lglut -lGL -o $@
+    output/Debug/atmosphere/model.o \
+    output/Debug/text/text_renderer.o \
+    output/Debug/external/glad/src/glad.o
+	$(GPP) $^ -pthread -ldl -lglut -lGL -o $@
 
 output/Debug/%.o: %.cc
 	mkdir -p $(@D)
@@ -121,6 +125,6 @@ output/Debug/atmosphere/demo/demo.o output/Release/atmosphere/demo/demo.o: \
     atmosphere/demo/demo.glsl.inc
 
 %.glsl.inc: %.glsl
-	sed -e '1i const char* $(*F)_glsl = R"***(' -e '$$a )***";' \
+	sed -e '1i const char $(*F)_glsl[] = R"***(' -e '$$a )***";' \
 	    -e '/^\/\*/,/\*\/$$/d' -e '/^ *\/\//d' -e '/^$$/d' $< > $@
 
