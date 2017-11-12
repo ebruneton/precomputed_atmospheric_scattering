@@ -139,14 +139,18 @@
 below. Besides a constructor and an initialization method, this class has one
 method per user interface event, and a few fields to store the current rendering
 options, the current camera and Sun parameters, as well as references to the
-atmosphere model and to the GLSL program used to render the scene:
+atmosphere model and to the GLSL program, vertex buffers and text renderer used
+to render the scene and the help messages:
 <pre class="prettyprint">
 #ifndef ATMOSPHERE_DEMO_DEMO_H_
 #define ATMOSPHERE_DEMO_DEMO_H_
 
+#include &lt;glad/glad.h&gt;
+
 #include &lt;memory&gt;
 
 #include "atmosphere/model.h"
+#include "text/text_renderer.h"
 
 namespace atmosphere {
 namespace demo {
@@ -193,6 +197,9 @@ class Demo {
 
   std::unique_ptr&lt;Model&gt; model_;
   unsigned int program_;
+  GLuint full_screen_quad_vao_;
+  GLuint full_screen_quad_vbo_;
+  std::unique_ptr&lt;TextRenderer&gt; text_renderer_;
   int window_id_;
 
   double view_distance_meters_;

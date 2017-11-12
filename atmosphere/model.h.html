@@ -254,6 +254,7 @@ parameter):
 #ifndef ATMOSPHERE_MODEL_H_
 #define ATMOSPHERE_MODEL_H_
 
+#include &lt;glad/glad.h&gt;
 #include &lt;array&gt;
 #include &lt;functional&gt;
 #include &lt;string&gt;
@@ -429,12 +430,15 @@ class Model {
 
   unsigned int num_precomputed_wavelengths_;
   bool half_precision_;
+  bool rgb_format_supported_;
   std::function&lt;std::string(const vec3&)&gt; glsl_header_factory_;
   unsigned int transmittance_texture_;
   unsigned int scattering_texture_;
   unsigned int optional_single_mie_scattering_texture_;
   unsigned int irradiance_texture_;
   unsigned int atmosphere_shader_;
+  GLuint full_screen_quad_vao_;
+  GLuint full_screen_quad_vbo_;
 };
 
 }  // namespace atmosphere

@@ -140,7 +140,7 @@ application.
 <pre class="prettyprint">
 #include "atmosphere/demo/demo.h"
 
-#include &lt;GL/glew.h&gt;
+#include &lt;glad/glad.h&gt;
 #include &lt;GL/freeglut.h&gt;
 
 #include &lt;memory&gt;
@@ -148,6 +148,8 @@ application.
 using atmosphere::demo::Demo;
 
 int main(int argc, char** argv) {
+  glutInitContextVersion(3, 3);
+  glutInitContextProfile(GLUT_CORE_PROFILE);
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
   glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);

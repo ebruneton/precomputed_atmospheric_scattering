@@ -148,7 +148,7 @@ of the following C++ code.
 <pre class="prettyprint">
 #include "atmosphere/model.h"
 
-#include &lt;GL/glew.h&gt;
+#include &lt;glad/glad.h&gt;
 
 #include &lt;cassert&gt;
 #include &lt;cmath&gt;
@@ -188,18 +188,17 @@ want to write):
 <pre class="prettyprint">
 const char kGeometryShader[] = R"(
     #version 330
-    #extension GL_EXT_geometry_shader4 : enable
     layout(triangles) in;
     layout(triangle_strip, max_vertices = 3) out;
     uniform int layer;
     void main() {
-      gl_Position = gl_PositionIn[0];
+      gl_Position = gl_in[0].gl_Position;
       gl_Layer = layer;
       EmitVertex();
-      gl_Position = gl_PositionIn[1];
+      gl_Position = gl_in[1].gl_Position;
       gl_Layer = layer;
       EmitVertex();
-      gl_Position = gl_PositionIn[2];
+      gl_Position = gl_in[2].gl_Position;
       gl_Layer = layer;
       EmitVertex();
       EndPrimitive();
@@ -524,8 +523,8 @@ GLuint NewTexture2d(int width, int height) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
   // 16F precision for the transmittance gives artifacts.
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, width, height, 0,
-      GL_RGB, GL_FLOAT, NULL);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0,
+      GL_RGBA, GL_FLOAT, NULL);
   return texture;
 }
 
@@ -549,21 +548,43 @@ GLuint NewTexture3d(int width, int height, int depth, GLenum format,
   return texture;
 }
 </pre>
+<p>a function to test whether the RGB format is a supported renderbuffer color
+format (the OpenGL 3.3 Core Profile specification requires support for the RGBA
+formats, but not for the RGB ones):
+<pre class="prettyprint">
+bool IsFramebufferRgbFormatSupported(bool half_precision) {
+  GLuint test_fbo = 0;
+  glGenFramebuffers(1, &test_fbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, test_fbo);
+  GLuint test_texture = 0;
+  glGenTextures(1, &test_texture);
+  glBindTexture(GL_TEXTURE_2D, test_texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexImage2D(GL_TEXTURE_2D, 0, half_precision ? GL_RGB16F : GL_RGB32F,
+               1, 1, 0, GL_RGB, GL_FLOAT, NULL);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                         GL_TEXTURE_2D, test_texture, 0);
+  bool rgb_format_supported =
+      glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+  glDeleteTextures(1, &test_texture);
+  glDeleteFramebuffers(1, &test_fbo);
+  return rgb_format_supported;
+}
+</pre>
 <p>and a function to draw a full screen quad in an offscreen framebuffer (with
 blending separately enabled or disabled for each color attachment):
 <pre class="prettyprint">
-void DrawQuad(const std::vector&lt;bool&gt;& enable_blend) {
+void DrawQuad(const std::vector&lt;bool&gt;& enable_blend, GLuint quad_vao) {
   for (unsigned int i = 0; i &lt; enable_blend.size(); ++i) {
     if (enable_blend[i]) {
       glEnablei(GL_BLEND, i);
     }
   }
-  glBegin(GL_TRIANGLE_STRIP);
-  glVertex2f(-1.0, -1.0);
-  glVertex2f(+1.0, -1.0);
-  glVertex2f(-1.0, +1.0);
-  glVertex2f(+1.0, +1.0);
-  glEnd();
+
+  glBindVertexArray(quad_vao);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  glBindVertexArray(0);
+
   for (unsigned int i = 0; i &lt; enable_blend.size(); ++i) {
     glDisablei(GL_BLEND, i);
   }
@@ -668,8 +689,9 @@ atmosphere parameters (we use constants instead of uniforms to enable constant
 folding and propagation optimizations in the GLSL compiler), concatenated with
 <a href="functions.glsl.html">functions.glsl</a>, and with
 <code>kAtmosphereShader</code>, to get the shader exposed by our API in
-<code>GetShader</code>. It also allocates the precomputed textures, but does not
-initialize them.
+<code>GetShader</code>. It also allocates the precomputed textures (but does not
+initialize them), as well as a vertex buffer object to render a full screen quad
+(used to render into the precomputed textures).
 <pre class="prettyprint">
 Model::Model(
     const std::vector&lt;double&gt;& wavelengths,
@@ -692,7 +714,8 @@ Model::Model(
     bool combine_scattering_textures,
     bool half_precision) :
         num_precomputed_wavelengths_(num_precomputed_wavelengths),
-        half_precision_(half_precision) {
+        half_precision_(half_precision),
+        rgb_format_supported_(IsFramebufferRgbFormatSupported(half_precision)) {
   auto to_string = [&wavelengths](const std::vector&lt;double&gt;& v,
       const vec3& lambdas, double scale) {
     double r = Interpolate(wavelengths, v, lambdas[0]) * scale;
@@ -810,7 +833,7 @@ Model::Model(
       SCATTERING_TEXTURE_WIDTH,
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
-      combine_scattering_textures ? GL_RGBA : GL_RGB,
+      combine_scattering_textures || !rgb_format_supported_ ? GL_RGBA : GL_RGB,
       half_precision);
   if (combine_scattering_textures) {
     optional_single_mie_scattering_texture_ = 0;
@@ -819,7 +842,7 @@ Model::Model(
         SCATTERING_TEXTURE_WIDTH,
         SCATTERING_TEXTURE_HEIGHT,
         SCATTERING_TEXTURE_DEPTH,
-        GL_RGB,
+        rgb_format_supported_ ? GL_RGB : GL_RGBA,
         half_precision);
   }
   irradiance_texture_ = NewTexture2d(
@@ -834,11 +857,31 @@ Model::Model(
   atmosphere_shader_ = glCreateShader(GL_FRAGMENT_SHADER);
   glShaderSource(atmosphere_shader_, 1, &source, NULL);
   glCompileShader(atmosphere_shader_);
+
+  // Create a full screen quad vertex array and vertex buffer objects.
+  glGenVertexArrays(1, &full_screen_quad_vao_);
+  glBindVertexArray(full_screen_quad_vao_);
+  glGenBuffers(1, &full_screen_quad_vbo_);
+  glBindBuffer(GL_ARRAY_BUFFER, full_screen_quad_vbo_);
+  const GLfloat vertices[] = {
+    -1.0, -1.0,
+    +1.0, -1.0,
+    -1.0, +1.0,
+    +1.0, +1.0,
+  };
+  constexpr int kCoordsPerVertex = 2;
+  glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
+  constexpr GLuint kAttribIndex = 0;
+  glVertexAttribPointer(kAttribIndex, kCoordsPerVertex, GL_FLOAT, false, 0, 0);
+  glEnableVertexAttribArray(kAttribIndex);
+  glBindVertexArray(0);
 }
 </pre>
 <p>The destructor is trivial:
 <pre class="prettyprint">
 Model::~Model() {
+  glDeleteBuffers(1, &full_screen_quad_vbo_);
+  glDeleteVertexArrays(1, &full_screen_quad_vao_);
   glDeleteTextures(1, &transmittance_texture_);
   glDeleteTextures(1, &scattering_texture_);
   if (optional_single_mie_scattering_texture_ != 0) {
@@ -911,19 +954,19 @@ void Model::Init(unsigned int num_scattering_orders) {
       SCATTERING_TEXTURE_WIDTH,
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
-      GL_RGB,
+      rgb_format_supported_ ? GL_RGB : GL_RGBA,
       half_precision_);
   GLuint delta_mie_scattering_texture = NewTexture3d(
       SCATTERING_TEXTURE_WIDTH,
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
-      GL_RGB,
+      rgb_format_supported_ ? GL_RGB : GL_RGBA,
       half_precision_);
   GLuint delta_scattering_density_texture = NewTexture3d(
       SCATTERING_TEXTURE_WIDTH,
       SCATTERING_TEXTURE_HEIGHT,
       SCATTERING_TEXTURE_DEPTH,
-      GL_RGB,
+      rgb_format_supported_ ? GL_RGB : GL_RGBA,
       half_precision_);
   // delta_multiple_scattering_texture is only needed to compute scattering
   // order 3 or more, while delta_rayleigh_scattering_texture and
@@ -941,8 +984,8 @@ void Model::Init(unsigned int num_scattering_orders) {
   // The actual precomputations depend on whether we want to store precomputed
   // irradiance or illuminance values.
   if (num_precomputed_wavelengths_ &lt;= 3) {
-    vec3 lambdas({kLambdaR, kLambdaG, kLambdaB});
-    mat3 luminance_from_radiance({1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0});
+    vec3 lambdas{kLambdaR, kLambdaG, kLambdaB};
+    mat3 luminance_from_radiance{1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
     Precompute(fbo, delta_irradiance_texture, delta_rayleigh_scattering_texture,
         delta_mie_scattering_texture, delta_scattering_density_texture,
         delta_multiple_scattering_texture, lambdas, luminance_from_radiance,
@@ -953,11 +996,11 @@ void Model::Init(unsigned int num_scattering_orders) {
     int num_iterations = (num_precomputed_wavelengths_ + 2) / 3;
     double dlambda = (kLambdaMax - kLambdaMin) / (3 * num_iterations);
     for (int i = 0; i &lt; num_iterations; ++i) {
-      vec3 lambdas({
+      vec3 lambdas{
         kLambdaMin + (3 * i + 0.5) * dlambda,
         kLambdaMin + (3 * i + 1.5) * dlambda,
         kLambdaMin + (3 * i + 2.5) * dlambda
-      });
+      };
       auto coeff = [dlambda](double lambda, int component) {
         // Note that we don't include MAX_LUMINOUS_EFFICACY here, to avoid
         // artefacts due to too large values when using half precision on GPU.
@@ -972,11 +1015,11 @@ void Model::Init(unsigned int num_scattering_orders) {
             XYZ_TO_SRGB[component * 3 + 1] * y +
             XYZ_TO_SRGB[component * 3 + 2] * z) * dlambda);
       };
-      mat3 luminance_from_radiance({
+      mat3 luminance_from_radiance{
         coeff(lambdas[0], 0), coeff(lambdas[1], 0), coeff(lambdas[2], 0),
         coeff(lambdas[0], 1), coeff(lambdas[1], 1), coeff(lambdas[2], 1),
         coeff(lambdas[0], 2), coeff(lambdas[1], 2), coeff(lambdas[2], 2)
-      });
+      };
       Precompute(fbo, delta_irradiance_texture,
           delta_rayleigh_scattering_texture, delta_mie_scattering_texture,
           delta_scattering_density_texture, delta_multiple_scattering_texture,
@@ -996,7 +1039,7 @@ void Model::Init(unsigned int num_scattering_orders) {
     glDrawBuffer(GL_COLOR_ATTACHMENT0);
     glViewport(0, 0, TRANSMITTANCE_TEXTURE_WIDTH, TRANSMITTANCE_TEXTURE_HEIGHT);
     compute_transmittance.Use();
-    DrawQuad({});
+    DrawQuad({}, full_screen_quad_vao_);
   }
 
   // Delete the temporary resources allocated at the begining of this method.
@@ -1118,7 +1161,7 @@ explained by the inline comments below.
   glDrawBuffer(GL_COLOR_ATTACHMENT0);
   glViewport(0, 0, TRANSMITTANCE_TEXTURE_WIDTH, TRANSMITTANCE_TEXTURE_HEIGHT);
   compute_transmittance.Use();
-  DrawQuad({});
+  DrawQuad({}, full_screen_quad_vao_);
 
   // Compute the direct irradiance, store it in delta_irradiance_texture and,
   // depending on 'blend', either initialize irradiance_texture_ with zeros or
@@ -1133,7 +1176,7 @@ explained by the inline comments below.
   compute_direct_irradiance.Use();
   compute_direct_irradiance.BindTexture2d(
       "transmittance_texture", transmittance_texture_, 0);
-  DrawQuad({false, blend});
+  DrawQuad({false, blend}, full_screen_quad_vao_);
 
   // Compute the rayleigh and mie single scattering, store them in
   // delta_rayleigh_scattering_texture and delta_mie_scattering_texture, and
@@ -1160,7 +1203,7 @@ explained by the inline comments below.
       "transmittance_texture", transmittance_texture_, 0);
   for (unsigned int layer = 0; layer &lt; SCATTERING_TEXTURE_DEPTH; ++layer) {
     compute_single_scattering.BindInt("layer", layer);
-    DrawQuad({false, false, blend, blend});
+    DrawQuad({false, false, blend, blend}, full_screen_quad_vao_);
   }
 
   // Compute the 2nd, 3rd and 4th order of scattering, in sequence.
@@ -1192,7 +1235,7 @@ explained by the inline comments below.
     compute_scattering_density.BindInt("scattering_order", scattering_order);
     for (unsigned int layer = 0; layer &lt; SCATTERING_TEXTURE_DEPTH; ++layer) {
       compute_scattering_density.BindInt("layer", layer);
-      DrawQuad({});
+      DrawQuad({}, full_screen_quad_vao_);
     }
 
     // Compute the indirect irradiance, store it in delta_irradiance_texture and
@@ -1216,7 +1259,7 @@ explained by the inline comments below.
         "multiple_scattering_texture", delta_multiple_scattering_texture, 2);
     compute_indirect_irradiance.BindInt("scattering_order",
         scattering_order - 1);
-    DrawQuad({false, true});
+    DrawQuad({false, true}, full_screen_quad_vao_);
 
     // Compute the multiple scattering, store it in
     // delta_multiple_scattering_texture, and accumulate it in
@@ -1236,7 +1279,7 @@ explained by the inline comments below.
         "scattering_density_texture", delta_scattering_density_texture, 1);
     for (unsigned int layer = 0; layer &lt; SCATTERING_TEXTURE_DEPTH; ++layer) {
       compute_multiple_scattering.BindInt("layer", layer);
-      DrawQuad({false, true});
+      DrawQuad({false, true}, full_screen_quad_vao_);
     }
   }
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, 0, 0);
