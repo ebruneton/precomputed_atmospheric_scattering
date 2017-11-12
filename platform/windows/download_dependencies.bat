@@ -1,8 +1,8 @@
 @echo off
 REM     https://cmake.org/files/v3.9/cmake-3.9.6-win64-x64.zip -> cmake
-REM     http://sourceforge.net/projects/gnuwin32/files//sed/4.2.1/sed-4.2.1-bin.zip/download -> sed
-REM     http://sourceforge.net/projects/gnuwin32/files//sed/4.2.1/sed-4.2.1-dep.zip/download -> sed
-REM     http://files.transmissionzero.co.uk/software/development/GLUT/freeglut-MSVC.zip -> freeglut
+REM     https://sourceforge.net/projects/gnuwin32/files/sed/4.2.1/sed-4.2.1-bin.zip/download -> sed
+REM     https://sourceforge.net/projects/gnuwin32/files/sed/4.2.1/sed-4.2.1-dep.zip/download -> sed
+REM     https://files.transmissionzero.co.uk/software/development/GLUT/freeglut-MSVC-3.0.0-2.mp.zip -> freeglut
 
 set EXT=%~dp0external
 
@@ -11,7 +11,7 @@ if not exist %EXT% md %EXT%
 
 REM ------------------ freeglut
 
-set SRC=http://files.transmissionzero.co.uk/software/development/GLUT/freeglut-MSVC.zip
+set SRC=https://files.transmissionzero.co.uk/software/development/GLUT/freeglut-MSVC-3.0.0-2.mp.zip
 set ZIP=%EXT%\freeglut-MSVC.zip
 set DST=%EXT%\.
 
@@ -24,7 +24,7 @@ del %ZIP%
 
 REM ------------------ sed
 
-set SRC=http://sourceforge.net/projects/gnuwin32/files//sed/4.2.1/sed-4.2.1-bin.zip/download
+set SRC=https://sourceforge.net/projects/gnuwin32/files/sed/4.2.1/sed-4.2.1-bin.zip/download
 set ZIP=%EXT%\sed-4.2.1-bin.zip
 set DST=%EXT%\sed
 
@@ -37,7 +37,7 @@ del %ZIP%
 
 REM ------------------ sed-dep
 
-set SRC=http://sourceforge.net/projects/gnuwin32/files//sed/4.2.1/sed-4.2.1-dep.zip/download
+set SRC=https://sourceforge.net/projects/gnuwin32/files/sed/4.2.1/sed-4.2.1-dep.zip/download
 set ZIP=%EXT%\sed-4.2.1-dep.zip
 set DST=%EXT%\sed
 
