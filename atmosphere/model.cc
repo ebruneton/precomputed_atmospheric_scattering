@@ -904,8 +904,8 @@ void Model::Init(unsigned int num_scattering_orders) {
   // The actual precomputations depend on whether we want to store precomputed
   // irradiance or illuminance values.
   if (num_precomputed_wavelengths_ <= 3) {
-    vec3 lambdas({kLambdaR, kLambdaG, kLambdaB});
-    mat3 luminance_from_radiance({1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0});
+    vec3 lambdas{kLambdaR, kLambdaG, kLambdaB};
+    mat3 luminance_from_radiance{1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
     Precompute(fbo, delta_irradiance_texture, delta_rayleigh_scattering_texture,
         delta_mie_scattering_texture, delta_scattering_density_texture,
         delta_multiple_scattering_texture, lambdas, luminance_from_radiance,
@@ -916,11 +916,11 @@ void Model::Init(unsigned int num_scattering_orders) {
     int num_iterations = (num_precomputed_wavelengths_ + 2) / 3;
     double dlambda = (kLambdaMax - kLambdaMin) / (3 * num_iterations);
     for (int i = 0; i < num_iterations; ++i) {
-      vec3 lambdas({
+      vec3 lambdas{
         kLambdaMin + (3 * i + 0.5) * dlambda,
         kLambdaMin + (3 * i + 1.5) * dlambda,
         kLambdaMin + (3 * i + 2.5) * dlambda
-      });
+      };
       auto coeff = [dlambda](double lambda, int component) {
         // Note that we don't include MAX_LUMINOUS_EFFICACY here, to avoid
         // artefacts due to too large values when using half precision on GPU.
@@ -935,11 +935,11 @@ void Model::Init(unsigned int num_scattering_orders) {
             XYZ_TO_SRGB[component * 3 + 1] * y +
             XYZ_TO_SRGB[component * 3 + 2] * z) * dlambda);
       };
-      mat3 luminance_from_radiance({
+      mat3 luminance_from_radiance{
         coeff(lambdas[0], 0), coeff(lambdas[1], 0), coeff(lambdas[2], 0),
         coeff(lambdas[0], 1), coeff(lambdas[1], 1), coeff(lambdas[2], 1),
         coeff(lambdas[0], 2), coeff(lambdas[1], 2), coeff(lambdas[2], 2)
-      });
+      };
       Precompute(fbo, delta_irradiance_texture,
           delta_rayleigh_scattering_texture, delta_mie_scattering_texture,
           delta_scattering_density_texture, delta_multiple_scattering_texture,
