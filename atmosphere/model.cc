@@ -605,8 +605,9 @@ atmosphere parameters (we use constants instead of uniforms to enable constant
 folding and propagation optimizations in the GLSL compiler), concatenated with
 <a href="functions.glsl.html">functions.glsl</a>, and with
 <code>kAtmosphereShader</code>, to get the shader exposed by our API in
-<code>GetShader</code>. It also allocates the precomputed textures, but does not
-initialize them.
+<code>GetShader</code>. It also allocates the precomputed textures (but does not
+initialize them), as well as a vertex buffer object to render a full screen quad
+(used to render into the precomputed textures).
 */
 
 Model::Model(
@@ -774,7 +775,7 @@ Model::Model(
   glShaderSource(atmosphere_shader_, 1, &source, NULL);
   glCompileShader(atmosphere_shader_);
 
-  // Create the VAO for full-screen quad drawing
+  // Create a full screen quad vertex array and vertex buffer objects.
   glGenVertexArrays(1, &full_screen_quad_vao_);
   glBindVertexArray(full_screen_quad_vao_);
   glGenBuffers(1, &full_screen_quad_vbo_);

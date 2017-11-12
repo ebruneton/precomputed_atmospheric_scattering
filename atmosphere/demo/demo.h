@@ -33,7 +33,8 @@
 below. Besides a constructor and an initialization method, this class has one
 method per user interface event, and a few fields to store the current rendering
 options, the current camera and Sun parameters, as well as references to the
-atmosphere model and to the GLSL program used to render the scene:
+atmosphere model and to the GLSL program, vertex buffers and text renderer used
+to render the scene and the help messages:
 */
 
 #ifndef ATMOSPHERE_DEMO_DEMO_H_
@@ -90,9 +91,10 @@ class Demo {
   bool show_help_;
 
   std::unique_ptr<Model> model_;
+  unsigned int program_;
   GLuint full_screen_quad_vao_;
   GLuint full_screen_quad_vbo_;
-  unsigned int program_;
+  std::unique_ptr<TextRenderer> text_renderer_;
   int window_id_;
 
   double view_distance_meters_;
@@ -105,8 +107,6 @@ class Demo {
   int previous_mouse_x_;
   int previous_mouse_y_;
   bool is_ctrl_key_pressed_;
-
-  std::unique_ptr<TextRenderer> text_renderer_;
 };
 
 }  // namespace demo

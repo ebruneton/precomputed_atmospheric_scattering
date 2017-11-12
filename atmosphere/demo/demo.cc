@@ -92,10 +92,11 @@ static std::map<int, Demo*> INSTANCES;
 /*
 <p>The class constructor is straightforward and completely independent of our
 atmosphere model (which is initialized in the separate method
-<code>InitModel</code>). It's main role is to create the demo window and to set
-up the event handler callbacks (it does so in such a way that several Demo
+<code>InitModel</code>). It's main role is to create the demo window, to set up
+the event handler callbacks (it does so in such a way that several Demo
 instances can be created at the same time, using the <code>INSTANCES</code>
-global variable):
+global variable), and to create the vertex buffers and the text renderer that
+will be used to render the scene and the help messages:
 */
 
 Demo::Demo(int viewport_width, int viewport_height) :
@@ -159,9 +160,9 @@ Demo::Demo(int viewport_width, int viewport_height) :
   glEnableVertexAttribArray(kAttribIndex);
   glBindVertexArray(0);
 
-  InitModel();
-
   text_renderer_.reset(new TextRenderer);
+
+  InitModel();
 }
 
 /*

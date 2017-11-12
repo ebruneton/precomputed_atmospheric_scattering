@@ -29,9 +29,11 @@
 
 #include "text/text_renderer.h"
 
-#include "font.inc"
+#include <vector>
 
 namespace {
+
+#include "font.inc"
 
 const char kVertexShader[] = R"(
     #version 330
