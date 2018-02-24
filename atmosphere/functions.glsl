@@ -452,13 +452,13 @@ the transmittance texture:
 */
 
 DimensionlessSpectrum ComputeTransmittanceToTopAtmosphereBoundaryTexture(
-    IN(AtmosphereParameters) atmosphere, IN(vec2) gl_frag_coord) {
+    IN(AtmosphereParameters) atmosphere, IN(vec2) frag_coord) {
   const vec2 TRANSMITTANCE_TEXTURE_SIZE =
       vec2(TRANSMITTANCE_TEXTURE_WIDTH, TRANSMITTANCE_TEXTURE_HEIGHT);
   Length r;
   Number mu;
   GetRMuFromTransmittanceTextureUv(
-      atmosphere, gl_frag_coord / TRANSMITTANCE_TEXTURE_SIZE, r, mu);
+      atmosphere, frag_coord / TRANSMITTANCE_TEXTURE_SIZE, r, mu);
   return ComputeTransmittanceToTopAtmosphereBoundary(atmosphere, r, mu);
 }
 
@@ -897,7 +897,7 @@ sun unit direction vectors), and the previous functions implicitely assume this
 */
 
 void GetRMuMuSNuFromScatteringTextureFragCoord(
-    IN(AtmosphereParameters) atmosphere, IN(vec3) gl_frag_coord,
+    IN(AtmosphereParameters) atmosphere, IN(vec3) frag_coord,
     OUT(Length) r, OUT(Number) mu, OUT(Number) mu_s, OUT(Number) nu,
     OUT(bool) ray_r_mu_intersects_ground) {
   const vec4 SCATTERING_TEXTURE_SIZE = vec4(
@@ -906,11 +906,11 @@ void GetRMuMuSNuFromScatteringTextureFragCoord(
       SCATTERING_TEXTURE_MU_SIZE,
       SCATTERING_TEXTURE_R_SIZE);
   Number frag_coord_nu =
-      floor(gl_frag_coord.x / Number(SCATTERING_TEXTURE_MU_S_SIZE));
+      floor(frag_coord.x / Number(SCATTERING_TEXTURE_MU_S_SIZE));
   Number frag_coord_mu_s =
-      mod(gl_frag_coord.x, Number(SCATTERING_TEXTURE_MU_S_SIZE));
+      mod(frag_coord.x, Number(SCATTERING_TEXTURE_MU_S_SIZE));
   vec4 uvwz =
-      vec4(frag_coord_nu, frag_coord_mu_s, gl_frag_coord.y, gl_frag_coord.z) /
+      vec4(frag_coord_nu, frag_coord_mu_s, frag_coord.y, frag_coord.z) /
           SCATTERING_TEXTURE_SIZE;
   GetRMuMuSNuFromScatteringTextureUvwz(
       atmosphere, uvwz, r, mu, mu_s, nu, ray_r_mu_intersects_ground);
@@ -925,14 +925,14 @@ the single scattering in a 3D texture:
 */
 
 void ComputeSingleScatteringTexture(IN(AtmosphereParameters) atmosphere,
-    IN(TransmittanceTexture) transmittance_texture, IN(vec3) gl_frag_coord,
+    IN(TransmittanceTexture) transmittance_texture, IN(vec3) frag_coord,
     OUT(IrradianceSpectrum) rayleigh, OUT(IrradianceSpectrum) mie) {
   Length r;
   Number mu;
   Number mu_s;
   Number nu;
   bool ray_r_mu_intersects_ground;
-  GetRMuMuSNuFromScatteringTextureFragCoord(atmosphere, gl_frag_coord,
+  GetRMuMuSNuFromScatteringTextureFragCoord(atmosphere, frag_coord,
       r, mu, mu_s, nu, ray_r_mu_intersects_ground);
   ComputeSingleScattering(atmosphere, transmittance_texture,
       r, mu, mu_s, nu, ray_r_mu_intersects_ground, rayleigh, mie);
@@ -1346,13 +1346,13 @@ RadianceDensitySpectrum ComputeScatteringDensityTexture(
     IN(ReducedScatteringTexture) single_mie_scattering_texture,
     IN(ScatteringTexture) multiple_scattering_texture,
     IN(IrradianceTexture) irradiance_texture,
-    IN(vec3) gl_frag_coord, int scattering_order) {
+    IN(vec3) frag_coord, int scattering_order) {
   Length r;
   Number mu;
   Number mu_s;
   Number nu;
   bool ray_r_mu_intersects_ground;
-  GetRMuMuSNuFromScatteringTextureFragCoord(atmosphere, gl_frag_coord,
+  GetRMuMuSNuFromScatteringTextureFragCoord(atmosphere, frag_coord,
       r, mu, mu_s, nu, ray_r_mu_intersects_ground);
   return ComputeScatteringDensity(atmosphere, transmittance_texture,
       single_rayleigh_scattering_texture, single_mie_scattering_texture,
@@ -1364,12 +1364,12 @@ RadianceSpectrum ComputeMultipleScatteringTexture(
     IN(AtmosphereParameters) atmosphere,
     IN(TransmittanceTexture) transmittance_texture,
     IN(ScatteringDensityTexture) scattering_density_texture,
-    IN(vec3) gl_frag_coord, OUT(Number) nu) {
+    IN(vec3) frag_coord, OUT(Number) nu) {
   Length r;
   Number mu;
   Number mu_s;
   bool ray_r_mu_intersects_ground;
-  GetRMuMuSNuFromScatteringTextureFragCoord(atmosphere, gl_frag_coord,
+  GetRMuMuSNuFromScatteringTextureFragCoord(atmosphere, frag_coord,
       r, mu, mu_s, nu, ray_r_mu_intersects_ground);
   return ComputeMultipleScattering(atmosphere, transmittance_texture,
       scattering_density_texture, r, mu, mu_s, nu,
@@ -1552,11 +1552,11 @@ const vec2 IRRADIANCE_TEXTURE_SIZE =
 IrradianceSpectrum ComputeDirectIrradianceTexture(
     IN(AtmosphereParameters) atmosphere,
     IN(TransmittanceTexture) transmittance_texture,
-    IN(vec2) gl_frag_coord) {
+    IN(vec2) frag_coord) {
   Length r;
   Number mu_s;
   GetRMuSFromIrradianceTextureUv(
-      atmosphere, gl_frag_coord / IRRADIANCE_TEXTURE_SIZE, r, mu_s);
+      atmosphere, frag_coord / IRRADIANCE_TEXTURE_SIZE, r, mu_s);
   return ComputeDirectIrradiance(atmosphere, transmittance_texture, r, mu_s);
 }
 
@@ -1569,11 +1569,11 @@ IrradianceSpectrum ComputeIndirectIrradianceTexture(
     IN(ReducedScatteringTexture) single_rayleigh_scattering_texture,
     IN(ReducedScatteringTexture) single_mie_scattering_texture,
     IN(ScatteringTexture) multiple_scattering_texture,
-    IN(vec2) gl_frag_coord, int scattering_order) {
+    IN(vec2) frag_coord, int scattering_order) {
   Length r;
   Number mu_s;
   GetRMuSFromIrradianceTextureUv(
-      atmosphere, gl_frag_coord / IRRADIANCE_TEXTURE_SIZE, r, mu_s);
+      atmosphere, frag_coord / IRRADIANCE_TEXTURE_SIZE, r, mu_s);
   return ComputeIndirectIrradiance(atmosphere,
       single_rayleigh_scattering_texture, single_mie_scattering_texture,
       multiple_scattering_texture, r, mu_s, scattering_order);
