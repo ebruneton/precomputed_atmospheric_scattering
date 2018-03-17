@@ -295,6 +295,8 @@ to get the final scene rendering program:
   const std::string fragment_shader_str =
       "#version 330\n" +
       std::string(use_luminance_ != NONE ? "#define USE_LUMINANCE\n" : "") +
+      "const float kLengthUnitInMeters = " +
+      std::to_string(kLengthUnitInMeters) + ";\n" +
       demo_glsl;
   const char* fragment_shader_source = fragment_shader_str.c_str();
   GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
