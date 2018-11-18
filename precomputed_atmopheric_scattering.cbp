@@ -55,6 +55,17 @@
 					<Add option="-g" />
 				</Compiler>
 			</Target>
+			<Target title="Webgl">
+				<Option output="output/Webgl/precompute" prefix_auto="1" extension_auto="1" />
+				<Option object_output="output/Webgl/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-fexpensive-optimizations" />
+					<Add option="-O3" />
+					<Add option="-DNDEBUG" />
+				</Compiler>
+			</Target>
 		</Build>
 		<Compiler>
 			<Add option="-Wmain" />
@@ -76,29 +87,43 @@
 		<Unit filename="atmosphere/constants.h">
 			<Option target="Debug" />
 			<Option target="Release" />
+			<Option target="Webgl" />
 		</Unit>
 		<Unit filename="atmosphere/definitions.glsl">
 			<Option compile="1" />
 			<Option target="Debug" />
 			<Option target="Release" />
 			<Option target="IntegrationTest" />
+			<Option target="Webgl" />
 		</Unit>
 		<Unit filename="atmosphere/demo/demo.cc">
 			<Option target="Debug" />
 			<Option target="Release" />
+			<Option target="Webgl" />
 		</Unit>
 		<Unit filename="atmosphere/demo/demo.glsl">
 			<Option compile="1" />
 			<Option target="Debug" />
 			<Option target="Release" />
+			<Option target="Webgl" />
 		</Unit>
 		<Unit filename="atmosphere/demo/demo.h">
 			<Option target="Debug" />
 			<Option target="Release" />
+			<Option target="Webgl" />
 		</Unit>
 		<Unit filename="atmosphere/demo/demo_main.cc">
 			<Option target="Debug" />
 			<Option target="Release" />
+		</Unit>
+		<Unit filename="atmosphere/demo/webgl/demo.html">
+			<Option target="Webgl" />
+		</Unit>
+		<Unit filename="atmosphere/demo/webgl/demo.js">
+			<Option target="Webgl" />
+		</Unit>
+		<Unit filename="atmosphere/demo/webgl/precompute.cc">
+			<Option target="Webgl" />
 		</Unit>
 		<Unit filename="atmosphere/functions.glsl">
 			<Option compile="1" />
@@ -106,16 +131,19 @@
 			<Option target="Release" />
 			<Option target="Test" />
 			<Option target="IntegrationTest" />
+			<Option target="Webgl" />
 		</Unit>
 		<Unit filename="atmosphere/model.cc">
 			<Option target="Debug" />
 			<Option target="Release" />
 			<Option target="IntegrationTest" />
+			<Option target="Webgl" />
 		</Unit>
 		<Unit filename="atmosphere/model.h">
 			<Option target="Debug" />
 			<Option target="Release" />
 			<Option target="IntegrationTest" />
+			<Option target="Webgl" />
 		</Unit>
 		<Unit filename="atmosphere/reference/definitions.h">
 			<Option target="Test" />
@@ -189,11 +217,13 @@
 			<Option target="Debug" />
 			<Option target="Release" />
 			<Option target="IntegrationTest" />
+			<Option target="Webgl" />
 		</Unit>
 		<Unit filename="external/glad/src/glad.cc">
 			<Option target="Debug" />
 			<Option target="Release" />
 			<Option target="IntegrationTest" />
+			<Option target="Webgl" />
 		</Unit>
 		<Unit filename="external/minpng/minpng.h">
 			<Option target="IntegrationTest" />
@@ -204,18 +234,23 @@
 		<Unit filename="external/progress_bar/util/progress_bar.h">
 			<Option target="IntegrationTest" />
 		</Unit>
-		<Unit filename="index" />
+		<Unit filename="index">
+			<Option target="Docgen" />
+		</Unit>
 		<Unit filename="text/font.inc">
 			<Option target="Debug" />
 			<Option target="Release" />
+			<Option target="Webgl" />
 		</Unit>
 		<Unit filename="text/text_renderer.cc">
 			<Option target="Debug" />
 			<Option target="Release" />
+			<Option target="Webgl" />
 		</Unit>
 		<Unit filename="text/text_renderer.h">
 			<Option target="Debug" />
 			<Option target="Release" />
+			<Option target="Webgl" />
 		</Unit>
 		<Unit filename="tools/docgen_main.cc">
 			<Option target="Docgen" />

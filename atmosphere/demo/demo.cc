@@ -170,6 +170,8 @@ Demo::Demo(int viewport_width, int viewport_height) :
 */
 
 Demo::~Demo() {
+  glDeleteShader(vertex_shader_);
+  glDeleteShader(fragment_shader_);
   glDeleteProgram(program_);
   glDeleteBuffers(1, &full_screen_quad_vbo_);
   glDeleteVertexArrays(1, &full_screen_quad_vao_);
@@ -287,10 +289,10 @@ our demo scene, and link them with the <code>Model</code>'s atmosphere shader
 to get the final scene rendering program:
 */
 
-  GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+  vertex_shader_ = glCreateShader(GL_VERTEX_SHADER);
   const char* const vertex_shader_source = kVertexShader;
-  glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
-  glCompileShader(vertex_shader);
+  glShaderSource(vertex_shader_, 1, &vertex_shader_source, NULL);
+  glCompileShader(vertex_shader_);
 
   const std::string fragment_shader_str =
       "#version 330\n" +
@@ -299,23 +301,21 @@ to get the final scene rendering program:
       std::to_string(kLengthUnitInMeters) + ";\n" +
       demo_glsl;
   const char* fragment_shader_source = fragment_shader_str.c_str();
-  GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fragment_shader, 1, &fragment_shader_source, NULL);
-  glCompileShader(fragment_shader);
+  fragment_shader_ = glCreateShader(GL_FRAGMENT_SHADER);
+  glShaderSource(fragment_shader_, 1, &fragment_shader_source, NULL);
+  glCompileShader(fragment_shader_);
 
   if (program_ != 0) {
     glDeleteProgram(program_);
   }
   program_ = glCreateProgram();
-  glAttachShader(program_, vertex_shader);
-  glAttachShader(program_, fragment_shader);
-  glAttachShader(program_, model_->GetShader());
+  glAttachShader(program_, vertex_shader_);
+  glAttachShader(program_, fragment_shader_);
+  glAttachShader(program_, model_->shader());
   glLinkProgram(program_);
-  glDetachShader(program_, vertex_shader);
-  glDetachShader(program_, fragment_shader);
-  glDetachShader(program_, model_->GetShader());
-  glDeleteShader(vertex_shader);
-  glDeleteShader(fragment_shader);
+  glDetachShader(program_, vertex_shader_);
+  glDetachShader(program_, fragment_shader_);
+  glDetachShader(program_, model_->shader());
 
 /*
 <p>Finally, it sets the uniforms of this program that can be set once and for

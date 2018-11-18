@@ -47,7 +47,7 @@ uniform vec3 earth_center;
 uniform vec3 sun_direction;
 uniform vec2 sun_size;
 in vec3 view_ray;
-layout(location = 0) out vec3 color;
+layout(location = 0) out vec4 color;
 
 /*
 <p>It uses the following constants, as well as the following atmosphere
@@ -381,6 +381,7 @@ the scene:
   }
   radiance = mix(radiance, ground_radiance, ground_alpha);
   radiance = mix(radiance, sphere_radiance, sphere_alpha);
-  color =
-     pow(vec3(1.0) - exp(-radiance / white_point * exposure), vec3(1.0 / 2.2));
+  color.rgb = 
+      pow(vec3(1.0) - exp(-radiance / white_point * exposure), vec3(1.0 / 2.2));
+  color.a = 1.0;
 }

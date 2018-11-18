@@ -1,0 +1,51 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Precomputed Atmospheric Scattering - WebGL Demo</title>
+    <script type="text/javascript" src="demo.js"></script>
+    <style>
+      html, body {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+      }
+      #help {
+        position: absolute;
+        top: 0;
+        left: 0;
+        color: red;
+        font-family: monospace;
+      }
+      ul {
+        padding-left: 1em;
+      }
+      li {
+        list-style: none;
+      }
+    </style>
+  </head>
+  <body onload="new Demo(document.body);">
+    <canvas id="glcanvas" width="400" height="300"></canvas>
+    <ul id="help">
+      <li>
+        <a href="index.html">Precomputed Atmospheric Scattering - WebGL Demo</a>
+      </li>
+      <li>&nbsp;</li>
+      <li>Mouse:
+        <ul>
+          <li>drag, CTRL+drag, wheel: view and sun directions</li>
+        </ul>
+      </li>
+      <li>Keys:
+        <ul>
+          <li>h: help</li>
+          <li>+/-: increase/decrease exposure</li>
+          <li>1-9: predefined views</li>
+        </ul>
+      </li>
+    </ul>
+  </body>
+</html>

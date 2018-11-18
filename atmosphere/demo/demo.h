@@ -55,6 +55,11 @@ class Demo {
   Demo(int viewport_width, int viewport_height);
   ~Demo();
 
+  const Model& model() const { return *model_; }
+  const GLuint vertex_shader() const { return vertex_shader_; }
+  const GLuint fragment_shader() const { return fragment_shader_; }
+  const GLuint program() const { return program_; }
+
  private:
   enum Luminance {
     // Render the spectral radiance at kLambdaR, kLambdaG, kLambdaB.
@@ -91,7 +96,9 @@ class Demo {
   bool show_help_;
 
   std::unique_ptr<Model> model_;
-  unsigned int program_;
+  GLuint vertex_shader_;
+  GLuint fragment_shader_;
+  GLuint program_;
   GLuint full_screen_quad_vao_;
   GLuint full_screen_quad_vbo_;
   std::unique_ptr<TextRenderer> text_renderer_;

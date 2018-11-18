@@ -982,11 +982,11 @@ texture units.
 */
 
 void Model::SetProgramUniforms(
-    unsigned int program,
-    unsigned int transmittance_texture_unit,
-    unsigned int scattering_texture_unit,
-    unsigned int irradiance_texture_unit,
-    unsigned int single_mie_scattering_texture_unit) const {
+    GLuint program,
+    GLuint transmittance_texture_unit,
+    GLuint scattering_texture_unit,
+    GLuint irradiance_texture_unit,
+    GLuint single_mie_scattering_texture_unit) const {
   glActiveTexture(GL_TEXTURE0 + transmittance_texture_unit);
   glBindTexture(GL_TEXTURE_2D, transmittance_texture_);
   glUniform1i(glGetUniformLocation(program, "transmittance_texture"),
@@ -1046,12 +1046,12 @@ described in Algorithm 4.1 of
 explained by the inline comments below.
 */
 void Model::Precompute(
-    unsigned int fbo,
-    unsigned int delta_irradiance_texture,
-    unsigned int delta_rayleigh_scattering_texture,
-    unsigned int delta_mie_scattering_texture,
-    unsigned int delta_scattering_density_texture,
-    unsigned int delta_multiple_scattering_texture,
+    GLuint fbo,
+    GLuint delta_irradiance_texture,
+    GLuint delta_rayleigh_scattering_texture,
+    GLuint delta_mie_scattering_texture,
+    GLuint delta_scattering_density_texture,
+    GLuint delta_multiple_scattering_texture,
     const vec3& lambdas,
     const mat3& luminance_from_radiance,
     bool blend,

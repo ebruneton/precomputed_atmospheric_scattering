@@ -525,11 +525,11 @@ method:
     program_ = glCreateProgram();
     glAttachShader(program_, vertex_shader);
     glAttachShader(program_, fragment_shader);
-    glAttachShader(program_, model_->GetShader());
+    glAttachShader(program_, model_->shader());
     glLinkProgram(program_);
     glDetachShader(program_, vertex_shader);
     glDetachShader(program_, fragment_shader);
-    glDetachShader(program_, model_->GetShader());
+    glDetachShader(program_, model_->shader());
     glDeleteShader(vertex_shader);
     glDeleteShader(fragment_shader);
 

@@ -284,14 +284,14 @@ class Model {
 
   void Init(unsigned int num_scattering_orders = 4);
 
-  unsigned int GetShader() const { return atmosphere_shader_; }
+  GLuint shader() const { return atmosphere_shader_; }
 
   void SetProgramUniforms(
-      unsigned int program,
-      unsigned int transmittance_texture_unit,
-      unsigned int scattering_texture_unit,
-      unsigned int irradiance_texture_unit,
-      unsigned int optional_single_mie_scattering_texture_unit = 0) const;
+      GLuint program,
+      GLuint transmittance_texture_unit,
+      GLuint scattering_texture_unit,
+      GLuint irradiance_texture_unit,
+      GLuint optional_single_mie_scattering_texture_unit = 0) const;
 
   // Utility method to convert a function of the wavelength to linear sRGB.
   // 'wavelengths' and 'spectrum' must have the same size. The integral of
@@ -312,12 +312,12 @@ class Model {
   typedef std::array<float, 9> mat3;
 
   void Precompute(
-      unsigned int fbo,
-      unsigned int delta_irradiance_texture,
-      unsigned int delta_rayleigh_scattering_texture,
-      unsigned int delta_mie_scattering_texture,
-      unsigned int delta_scattering_density_texture,
-      unsigned int delta_multiple_scattering_texture,
+      GLuint fbo,
+      GLuint delta_irradiance_texture,
+      GLuint delta_rayleigh_scattering_texture,
+      GLuint delta_mie_scattering_texture,
+      GLuint delta_scattering_density_texture,
+      GLuint delta_multiple_scattering_texture,
       const vec3& lambdas,
       const mat3& luminance_from_radiance,
       bool blend,
@@ -327,11 +327,11 @@ class Model {
   bool half_precision_;
   bool rgb_format_supported_;
   std::function<std::string(const vec3&)> glsl_header_factory_;
-  unsigned int transmittance_texture_;
-  unsigned int scattering_texture_;
-  unsigned int optional_single_mie_scattering_texture_;
-  unsigned int irradiance_texture_;
-  unsigned int atmosphere_shader_;
+  GLuint transmittance_texture_;
+  GLuint scattering_texture_;
+  GLuint optional_single_mie_scattering_texture_;
+  GLuint irradiance_texture_;
+  GLuint atmosphere_shader_;
   GLuint full_screen_quad_vao_;
   GLuint full_screen_quad_vbo_;
 };

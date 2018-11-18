@@ -38,9 +38,10 @@ DIRS := atmosphere text tools
 HEADERS := $(shell find $(DIRS) -name "*.h")
 SOURCES := $(shell find $(DIRS) -name "*.cc")
 GLSL_SOURCES := $(shell find $(DIRS) -name "*.glsl")
-DOC_SOURCES := $(HEADERS) $(SOURCES) $(GLSL_SOURCES) index
+JS_SOURCES := $(shell find $(DIRS) -name "*.js")
+DOC_SOURCES := $(HEADERS) $(SOURCES) $(GLSL_SOURCES) $(JS_SOURCES) index
 
-all: lint doc test integration_test demo
+all: lint doc test integration_test webgl demo
 
 # cpplint can be installed with "pip install cpplint".
 # We exclude runtime/references checking for functions.h and model_test.cc
@@ -66,6 +67,8 @@ integration_test: output/Release/atmosphere_integration_test
 	mkdir -p output/Doc/atmosphere/reference
 	output/Release/atmosphere_integration_test
 
+webgl: output/Doc/scattering.dat output/Doc/demo.html output/Doc/demo.js
+
 demo: output/Debug/atmosphere_demo
 	output/Debug/atmosphere_demo
 
@@ -76,6 +79,18 @@ clean:
 output/Doc/%.html: % output/Debug/tools/docgen tools/docgen_template.html
 	mkdir -p $(@D)
 	output/Debug/tools/docgen $< tools/docgen_template.html $@
+
+output/Doc/scattering.dat: output/Debug/precompute
+	mkdir -p $(@D)
+	output/Debug/precompute $(@D)/
+
+output/Doc/demo.html: atmosphere/demo/webgl/demo.html
+	mkdir -p $(@D)
+	cp $< $@
+
+output/Doc/demo.js: atmosphere/demo/webgl/demo.js
+	mkdir -p $(@D)
+	cp $< $@
 
 output/Debug/tools/docgen: output/Debug/tools/docgen_main.o
 	$(GPP) $< -o $@
@@ -94,6 +109,14 @@ output/Release/atmosphere_integration_test: \
     output/Release/external/dimensional_types/test/test_main.o \
     output/Release/external/glad/src/glad.o \
     output/Release/external/progress_bar/util/progress_bar.o
+	$(GPP) $^ -pthread -ldl -lglut -lGL -o $@
+
+output/Debug/precompute: \
+    output/Debug/atmosphere/demo/demo.o \
+    output/Debug/atmosphere/demo/webgl/precompute.o \
+    output/Debug/atmosphere/model.o \
+    output/Debug/text/text_renderer.o \
+    output/Debug/external/glad/src/glad.o
 	$(GPP) $^ -pthread -ldl -lglut -lGL -o $@
 
 output/Debug/atmosphere_demo: \
