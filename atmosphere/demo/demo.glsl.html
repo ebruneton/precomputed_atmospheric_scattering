@@ -152,7 +152,7 @@ uniform vec3 earth_center;
 uniform vec3 sun_direction;
 uniform vec2 sun_size;
 in vec3 view_ray;
-layout(location = 0) out vec3 color;
+layout(location = 0) out vec4 color;
 </pre>
 <p>It uses the following constants, as well as the following atmosphere
 rendering functions, defined externally (by the <code>Model</code>'s
@@ -161,8 +161,8 @@ to select either the functions returning radiance values, or those returning
 luminance values (see <a href="../model.h.html">model.h</a>).
 <pre class="prettyprint">
 const float PI = 3.14159265;
-const vec3 kSphereCenter = vec3(0.0, 0.0, 1.0);
-const float kSphereRadius = 1.0;
+const vec3 kSphereCenter = vec3(0.0, 0.0, 1000.0) / kLengthUnitInMeters;
+const float kSphereRadius = 1000.0 / kLengthUnitInMeters;
 const vec3 kSphereAlbedo = vec3(0.8);
 const vec3 kGroundAlbedo = vec3(0.0, 0.0, 0.04);
 
@@ -466,8 +466,9 @@ the scene:
   }
   radiance = mix(radiance, ground_radiance, ground_alpha);
   radiance = mix(radiance, sphere_radiance, sphere_alpha);
-  color =
-     pow(vec3(1.0) - exp(-radiance / white_point * exposure), vec3(1.0 / 2.2));
+  color.rgb = 
+      pow(vec3(1.0) - exp(-radiance / white_point * exposure), vec3(1.0 / 2.2));
+  color.a = 1.0;
 }
 </pre>
 </body>

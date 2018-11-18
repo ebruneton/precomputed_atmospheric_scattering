@@ -197,7 +197,8 @@ its structure and its documentation and give more details about its tests.
 implementation</a> can be used in C++ / OpenGL applications as explained
 in <a href="atmosphere/model.h.html">model.h</a>, and as demonstrated in the
 demo in <code>atmosphere/demo</code>. To run this demo, simply type <code>make
-demo</code> in the main directory.
+demo</code> in the main directory. A WebGL2 version of this demo is also
+available <a href="demo.html">online</a>.
 
 <p>The default settings of this demo use the real solar spectrum, with an ozone
 layer. To simulate the settings of the original implementation, set the solar
@@ -230,7 +231,8 @@ atmosphere model on GPU.
 <ul>
   <li>The <code>atmosphere/demo</code> directory shows how the API provided in
      <code>atmosphere</code> can be used in practice, using a small C++/OpenGL
-     demo application.
+     demo application. A WebGL2 version of this demo is also available, in the
+    <code>webgl</code> subdirectory.
   </li>
   <li>The <code>atmosphere/reference</code> directory provides a way to execute
     our GLSL code on CPU. Its main purpose is to provide unit tests for the GLSL
@@ -259,6 +261,12 @@ extensive comments in each source code file:
       <li><a href="atmosphere/demo/demo.cc.html">demo.cc</a></li>
       <li><a href="atmosphere/demo/demo.glsl.html">demo.glsl</a></li>
       <li><a href="atmosphere/demo/demo_main.cc.html">demo_main.cc</a></li>
+      <li>webgl<ul>
+        <li><a href="atmosphere/demo/webgl/demo.js.html">demo.js</a></li>
+        <li>
+          <a href="atmosphere/demo/webgl/precompute.cc.html">precompute.cc</a>
+        </li>
+      </ul></li>
     </ul></li>
     <li>reference<ul>
       <li><a href="atmosphere/reference/definitions.h.html">
