@@ -1627,7 +1627,9 @@ function:
 #ifdef COMBINED_SCATTERING_TEXTURES
 vec3 GetExtrapolatedSingleMieScattering(
     IN(AtmosphereParameters) atmosphere, IN(vec4) scattering) {
-  if (scattering.r == 0.0) {
+  // Algebraically this can never be negative, but rounding errors can produce that effect for
+  // sufficiently short view rays.
+  if (scattering.r <= 0.0) {
     return vec3(0.0);
   }
   return scattering.rgb * scattering.a / scattering.r *
