@@ -237,6 +237,9 @@ a full screen quad with it:
         true,  this.modelFromView);
     gl.uniform1i(gl.getUniformLocation(program, 'transmittance_texture'), 0);
     gl.uniform1i(gl.getUniformLocation(program, 'scattering_texture'), 1);
+    // Unused texture sampler, but bind a 3D texture to it anyway, just in case.
+    gl.uniform1i(
+        gl.getUniformLocation(program, 'single_mie_scattering_texture'), 1);
     gl.uniform1i(gl.getUniformLocation(program, 'irradiance_texture'), 2);
     gl.uniform3f(gl.getUniformLocation(program, 'camera'),
         this.modelFromView[3], this.modelFromView[7], this.modelFromView[11]);
