@@ -816,8 +816,13 @@ vec4 GetScatteringTextureUvwzFromRMuMuSNu(IN(AtmosphereParameters) atmosphere,
   Length d_min = atmosphere.top_radius - atmosphere.bottom_radius;
   Length d_max = H;
   Number a = (d - d_min) / (d_max - d_min);
-  Number A =
-      -2.0 * atmosphere.mu_s_min * atmosphere.bottom_radius / (d_max - d_min);
+  Length D = DistanceToTopAtmosphereBoundary(
+      atmosphere, atmosphere.bottom_radius, atmosphere.mu_s_min);
+  Number A = (D - d_min) / (d_max - d_min);
+  // An ad-hoc function equal to 0 for mu_s = mu_s_min (because then d = D and
+  // thus a = A), equal to 1 for mu_s = 1 (because then d = d_min and thus
+  // a = 0), and with a large slope around mu_s = 0, to get more texture 
+  // samples near the horizon.
   Number u_mu_s = GetTextureCoordFromUnitRange(
       max(1.0 - a / A, 0.0) / (1.0 + a), SCATTERING_TEXTURE_MU_S_SIZE);
 
@@ -873,8 +878,9 @@ void GetRMuMuSNuFromScatteringTextureUvwz(IN(AtmosphereParameters) atmosphere,
       GetUnitRangeFromTextureCoord(uvwz.y, SCATTERING_TEXTURE_MU_S_SIZE);
   Length d_min = atmosphere.top_radius - atmosphere.bottom_radius;
   Length d_max = H;
-  Number A =
-      -2.0 * atmosphere.mu_s_min * atmosphere.bottom_radius / (d_max - d_min);
+  Length D = DistanceToTopAtmosphereBoundary(
+      atmosphere, atmosphere.bottom_radius, atmosphere.mu_s_min);
+  Number A = (D - d_min) / (d_max - d_min);
   Number a = (A - x_mu_s * A) / (1.0 + x_mu_s * A);
   Length d = d_min + min(a, A) * (d_max - d_min);
   mu_s = d == 0.0 * m ? Number(1.0) :
