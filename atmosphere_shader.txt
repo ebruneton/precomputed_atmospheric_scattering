@@ -390,8 +390,9 @@ vec4 GetScatteringTextureUvwzFromRMuMuSNu(IN(AtmosphereParameters) atmosphere,
   Length d_min = atmosphere.top_radius - atmosphere.bottom_radius;
   Length d_max = H;
   Number a = (d - d_min) / (d_max - d_min);
-  Number A =
-      -2.0 * atmosphere.mu_s_min * atmosphere.bottom_radius / (d_max - d_min);
+  Length D = DistanceToTopAtmosphereBoundary(
+      atmosphere, atmosphere.bottom_radius, atmosphere.mu_s_min);
+  Number A = (D - d_min) / (d_max - d_min);
   Number u_mu_s = GetTextureCoordFromUnitRange(
       max(1.0 - a / A, 0.0) / (1.0 + a), SCATTERING_TEXTURE_MU_S_SIZE);
   Number u_nu = (nu + 1.0) / 2.0;
@@ -430,8 +431,9 @@ void GetRMuMuSNuFromScatteringTextureUvwz(IN(AtmosphereParameters) atmosphere,
       GetUnitRangeFromTextureCoord(uvwz.y, SCATTERING_TEXTURE_MU_S_SIZE);
   Length d_min = atmosphere.top_radius - atmosphere.bottom_radius;
   Length d_max = H;
-  Number A =
-      -2.0 * atmosphere.mu_s_min * atmosphere.bottom_radius / (d_max - d_min);
+  Length D = DistanceToTopAtmosphereBoundary(
+      atmosphere, atmosphere.bottom_radius, atmosphere.mu_s_min);
+  Number A = (D - d_min) / (d_max - d_min);
   Number a = (A - x_mu_s * A) / (1.0 + x_mu_s * A);
   Length d = d_min + min(a, A) * (d_max - d_min);
   mu_s = d == 0.0 * m ? Number(1.0) :
