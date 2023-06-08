@@ -1849,10 +1849,6 @@ RadianceSpectrum GetSkyRadianceToPoint(
   scattering = scattering - shadow_transmittance * scattering_p;
   single_mie_scattering =
       single_mie_scattering - shadow_transmittance * single_mie_scattering_p;
-#ifdef COMBINED_SCATTERING_TEXTURES
-  single_mie_scattering = GetExtrapolatedSingleMieScattering(
-      atmosphere, vec4(scattering, single_mie_scattering.r));
-#endif
 
   // Hack to avoid rendering artifacts when the sun is below the horizon.
   single_mie_scattering = single_mie_scattering *
