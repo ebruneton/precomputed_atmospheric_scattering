@@ -1007,6 +1007,13 @@ void Model::SetProgramUniforms(
     glBindTexture(GL_TEXTURE_3D, optional_single_mie_scattering_texture_);
     glUniform1i(glGetUniformLocation(program, "single_mie_scattering_texture"),
         single_mie_scattering_texture_unit);
+  } else {
+    // Unused texture sampler, but bind a 3D texture to it anyway, just in case.
+    // Avoid GL_INVALID_OPERATION: Two textures of different types use the same sampler location.
+    GLint location = glGetUniformLocation(program, "single_mie_scattering_texture");
+    if (location != -1) {
+      glUniform1i(location, scattering_texture_unit);
+    }
   }
 }
 
